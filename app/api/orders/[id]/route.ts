@@ -15,7 +15,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Status is required' }, { status: 400 })
         }
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (supabaseAdmin as any)
             .from('orders')
             .update({ status })
             .eq('id', id)

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
     try {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (supabaseAdmin as any)
             .from('inventory')
             .select(`
         *,

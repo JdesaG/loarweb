@@ -11,7 +11,7 @@ export async function GET(request: Request) {
         const dateFrom = searchParams.get('dateFrom')
         const dateTo = searchParams.get('dateTo')
 
-        let query = supabaseAdmin
+        let query = (supabaseAdmin as any)
             .from('orders')
             .select(`
         *,
