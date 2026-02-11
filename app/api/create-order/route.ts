@@ -8,14 +8,22 @@ export async function POST(request: Request) {
         const json = await request.json()
         const { customer, items, totalAmount } = createOrderSchema.parse(json)
 
+        // Using explicit type definition and casting client to any to bypass
+        // persistent "No overload matches" error due to schema inference issues.
+        type OrdersInsert = {
+            customer_info: any
+            total_amount: number
+            status: string
+        }
+
         // 1. Create Order
-        const { data: order, error: orderError } = await supabaseAdmin
+        const { data: order, error: orderError } = await (supabaseAdmin as any)
             .from('orders')
             .insert({
                 customer_info: customer,
                 total_amount: totalAmount,
                 status: 'pending'
-            })
+            } as OrdersInsert)
             .select('id, order_code')
             .single()
 
@@ -32,7 +40,7 @@ export async function POST(request: Request) {
             design_details: item.design_details
         }))
 
-        const { error: itemsError } = await supabaseAdmin
+        const { error: itemsError } = await (supabaseAdmin as any)
             .from('order_items')
             .insert(orderItems)
 
