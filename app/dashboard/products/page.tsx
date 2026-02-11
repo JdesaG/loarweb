@@ -6,14 +6,7 @@ import { Product } from "@/types"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table" // Assuming table exists or I use HTML table
+
 import Image from "next/image"
 
 export default function ProductsPage() {
