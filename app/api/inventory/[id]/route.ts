@@ -12,9 +12,13 @@ export async function PATCH(
         const json = await request.json()
         const input = updateInventorySchema.parse(json)
 
-        const { data, error } = await supabaseAdmin
+        const updates: any = {}
+        if (input.quantityAvailable !== undefined) updates.quantity_available = input.quantityAvailable
+        if (input.isVisible !== undefined) updates.is_visible = input.isVisible
+
+        const { data, error } = await (supabaseAdmin as any)
             .from('inventory')
-            .update(input)
+            .update(updates)
             .eq('id', id)
             .select()
             .single()

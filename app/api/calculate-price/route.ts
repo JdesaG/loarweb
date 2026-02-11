@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server'
-import { createBrowserSupabaseClient } from '@/lib/supabase' // Use public client for read-only RPC if RLS allows
+import { supabaseAdmin } from '@/lib/supabase'
 import { calculatePriceSchema } from '@/schemas/calculate'
 
 export async function POST(request: Request) {
@@ -8,12 +8,11 @@ export async function POST(request: Request) {
         const json = await request.json()
         const input = calculatePriceSchema.parse(json)
 
-        // We can use the public client because get_product_price RPC is likely accessible to public
-        // or RLS allows access. For improved security, use service role if logic is sensitive.
-        // However, pricing is usually public.
-        const supabase = createBrowserSupabaseClient()
-
-        const { data, error } = await supabase.rpc('get_product_price', {
+        // Using admin client for price calculation is safe as it's a read operation
+        // and inputs are validated. This avoids client-side type issues.
+        // Cast to any to avoid "is not assignable to parameter of type 'undefined'" error 
+        // which suggests a type inference issue with the generated Database types.
+        const { data, error } = await (supabaseAdmin as any).rpc('get_product_price', {
             p_product_id: input.productId,
             p_style_name: input.styleName || '',
             p_material: input.material || '',
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
 
         if (!priceInfo) {
             // Fallback: Fetch base price from products table
-            const { data: product } = await supabase
+            const { data: product } = await supabaseAdmin
                 .from('products')
                 .select('base_price')
                 .eq('id', input.productId)
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
             if (product) {
                 return NextResponse.json({
                     pricingId: null, // No specific rule matched
-                    unitPrice: product.base_price
+                    unitPrice: (product as any).base_price
                 })
             }
             return NextResponse.json({ error: 'Product not found' }, { status: 404 })
