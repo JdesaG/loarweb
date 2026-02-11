@@ -5,8 +5,9 @@ import { updateInventorySchema } from '@/schemas/inventory'
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
     try {
         const json = await request.json()
         const input = updateInventorySchema.parse(json)
@@ -14,7 +15,7 @@ export async function PATCH(
         const { data, error } = await supabaseAdmin
             .from('inventory')
             .update(input)
-            .eq('id', params.id)
+            .eq('id', id)
             .select()
             .single()
 

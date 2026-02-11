@@ -4,8 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
     try {
         const json = await request.json()
         const { status } = json
@@ -17,7 +18,7 @@ export async function PATCH(
         const { data, error } = await supabaseAdmin
             .from('orders')
             .update({ status })
-            .eq('id', params.id)
+            .eq('id', id)
             .select()
             .single()
 
