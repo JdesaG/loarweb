@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { formatCurrency } from '@/lib/utils'
-import { ArrowLeft, CheckCircle, Loader2, ShoppingCart, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Loader2, ShoppingCart, Trash2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import type { CustomerInfoInput } from '@/schemas/order'
@@ -22,7 +22,7 @@ export default function CheckoutPage() {
     const { items, total, clearCart, removeItem } = useCart()
     const [submitting, setSubmitting] = useState(false)
     const [orderCode, setOrderCode] = useState<string | null>(null)
-    const [acceptTerms, setAcceptTerms] = useState(false)
+    const [termsAccepted, setTermsAccepted] = useState(false)
 
     const {
         register,
@@ -33,8 +33,8 @@ export default function CheckoutPage() {
     })
 
     const onSubmit = async (customer: CustomerInfoInput) => {
-        if (!acceptTerms) {
-            toast.error('Debes aceptar los términos y condiciones')
+        if (!termsAccepted) {
+            toast.error('Debes aceptar los términos y condiciones para continuar.')
             return
         }
 
@@ -48,7 +48,10 @@ export default function CheckoutPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    customer,
+                    customer: {
+                        ...customer,
+                        data_consent: termsAccepted,
+                    },
                     items: items.map((item) => ({
                         product_id: item.product.id,
                         product_name: item.product.name,
@@ -65,7 +68,11 @@ export default function CheckoutPage() {
                         add_initial: item.addInitial ?? false,
                         initial_letter: item.initialLetter || null,
                         initial_price: item.initialPrice ?? 0,
-                        item_total: item.unitPrice * item.quantity + (item.addInitial && item.initialPrice ? item.initialPrice * item.quantity : 0),
+                        item_total:
+                            item.unitPrice * item.quantity +
+                            (item.addInitial && item.initialPrice
+                                ? item.initialPrice * item.quantity
+                                : 0),
                     })),
                     subtotal,
                     tax,
@@ -117,7 +124,9 @@ export default function CheckoutPage() {
                 <header className="border-b border-neutral-100 bg-white">
                     <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
                         <Link href="/onboarding">
-                            <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
+                            <Button variant="ghost" size="icon">
+                                <ArrowLeft className="h-5 w-5" />
+                            </Button>
                         </Link>
                         <h1 className="text-lg font-bold text-neutral-900">Checkout</h1>
                     </div>
@@ -142,7 +151,9 @@ export default function CheckoutPage() {
             <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white/80 backdrop-blur-md">
                 <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
                     <Link href="/onboarding">
-                        <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
                     </Link>
                     <h1 className="text-lg font-bold text-neutral-900">Checkout</h1>
                 </div>
@@ -159,18 +170,25 @@ export default function CheckoutPage() {
                             <Card key={item.id}>
                                 <CardContent className="p-4 flex items-center gap-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-neutral-900 truncate">{item.product.name}</p>
+                                        <p className="text-sm font-medium text-neutral-900 truncate">
+                                            {item.product.name}
+                                        </p>
                                         <p className="text-xs text-neutral-500">
                                             ×{item.quantity} · {formatCurrency(item.unitPrice)}
+                                            {item.designType && ` · ${item.designType}`}
                                             {item.selectedColor && ` · ${item.selectedColor}`}
                                             {item.selectedSize && ` · ${item.selectedSize}`}
-                                            {item.designType && ` · ${item.designType}`}
                                         </p>
                                     </div>
                                     <p className="font-semibold text-neutral-900 text-sm">
                                         {formatCurrency(item.unitPrice * item.quantity)}
                                     </p>
-                                    <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-8 w-8">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => removeItem(item.id)}
+                                        className="h-8 w-8"
+                                    >
                                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
                                     </Button>
                                 </CardContent>
@@ -190,44 +208,69 @@ export default function CheckoutPage() {
                     </h2>
 
                     <div className="space-y-2">
-                        <Label>Nombre completo</Label>
+                        <Label>Nombre completo *</Label>
                         <Input {...register('customer_name')} placeholder="Juan Pérez" />
-                        {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name.message}</p>}
+                        {errors.customer_name && (
+                            <p className="text-xs text-red-500">{errors.customer_name.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Teléfono</Label>
-                        <Input {...register('customer_phone')} placeholder="+593 9XX XXX XXXX" />
-                        {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input {...register('customer_email')} type="email" placeholder="correo@ejemplo.com" />
-                        {errors.customer_email && <p className="text-xs text-red-500">{errors.customer_email.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Cédula</Label>
-                        <Input {...register('customer_id_card')} placeholder="1234567890" />
-                    </div>
-
-                    {/* Terms & Conditions */}
-                    <div className="flex items-start gap-3 rounded-lg border border-neutral-200 p-4 bg-neutral-50">
-                        <input
-                            type="checkbox"
-                            id="accept-terms"
-                            checked={acceptTerms}
-                            onChange={(e) => setAcceptTerms(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500"
+                        <Label>Email *</Label>
+                        <Input
+                            {...register('customer_email')}
+                            type="email"
+                            placeholder="correo@ejemplo.com"
                         />
-                        <label htmlFor="accept-terms" className="text-sm text-neutral-600 cursor-pointer">
-                            Acepto los{' '}
-                            <span className="font-medium text-neutral-900 underline">
-                                Términos y Condiciones
-                            </span>{' '}
-                            y autorizo el uso de mis datos personales para el procesamiento de este pedido.
-                        </label>
+                        {errors.customer_email && (
+                            <p className="text-xs text-red-500">{errors.customer_email.message}</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Teléfono *</Label>
+                        <Input
+                            {...register('customer_phone')}
+                            placeholder="+593 9XX XXX XXXX"
+                        />
+                        {errors.customer_phone && (
+                            <p className="text-xs text-red-500">{errors.customer_phone.message}</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Cédula *</Label>
+                        <Input {...register('customer_id_card')} placeholder="1234567890" />
+                        {errors.customer_id_card && (
+                            <p className="text-xs text-red-500">{errors.customer_id_card.message}</p>
+                        )}
+                    </div>
+
+                    {/* ── Terms & Conditions ──────────────────────────────────── */}
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+                        <div className="flex items-start gap-3">
+                            <input
+                                type="checkbox"
+                                id="terms"
+                                checked={termsAccepted}
+                                onChange={(e) => setTermsAccepted(e.target.checked)}
+                                className="mt-1 h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500 cursor-pointer accent-neutral-900"
+                            />
+                            <label htmlFor="terms" className="text-sm text-neutral-700 cursor-pointer">
+                                He leído y acepto los{' '}
+                                <span className="font-semibold text-neutral-900 underline underline-offset-2">
+                                    términos y condiciones
+                                </span>{' '}
+                                de LOAR. Autorizo el tratamiento de mis datos personales para el
+                                procesamiento de este pedido.
+                            </label>
+                        </div>
+                        {!termsAccepted && (
+                            <p className="text-xs text-amber-600 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Debes aceptar los términos para continuar
+                            </p>
+                        )}
                     </div>
 
                     <Button
@@ -235,7 +278,7 @@ export default function CheckoutPage() {
                         variant="brand"
                         size="lg"
                         className="w-full"
-                        disabled={submitting || !acceptTerms}
+                        disabled={submitting || !termsAccepted}
                     >
                         {submitting ? (
                             <>

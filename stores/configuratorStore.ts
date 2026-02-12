@@ -14,6 +14,8 @@ interface ConfiguratorActions {
 const initialState: ConfiguratorState = {
     product: null,
     step: 1,
+    styleName: '',
+    material: '',
     designType: '',
     color: '',
     size: '',
@@ -25,8 +27,6 @@ const initialState: ConfiguratorState = {
     placement: '',
     hasInitial: false,
     initialLetter: '',
-    designMainUrl: null,
-    designSecondaryUrl: null,
     unitPrice: null,
     pricingId: null,
 }

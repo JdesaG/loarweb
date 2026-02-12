@@ -61,7 +61,7 @@ export interface Database {
                 Relationships: []
             }
 
-            products_pricing: {
+            product_pricing: {
                 Row: {
                     id: string
                     product_id: string
@@ -97,7 +97,7 @@ export interface Database {
                 }
                 Relationships: [
                     {
-                        foreignKeyName: "products_pricing_product_id_fkey"
+                        foreignKeyName: "product_pricing_product_id_fkey"
                         columns: ["product_id"]
                         isOneToOne: false
                         referencedRelation: "products"

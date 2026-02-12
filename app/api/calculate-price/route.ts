@@ -9,9 +9,9 @@ export async function POST(request: Request) {
 
         const db = supabaseAdmin()
 
-        // Query products_pricing table directly (more reliable than RPC)
+        // Query product_pricing table directly (more reliable than RPC)
         let query = db
-            .from('products_pricing')
+            .from('product_pricing')
             .select('id, price')
             .eq('product_id', input.productId)
 

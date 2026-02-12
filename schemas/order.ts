@@ -26,7 +26,7 @@ export const customerInfoSchema = z.object({
     customer_name: z.string().min(2, 'Nombre requerido'),
     customer_email: z.string().email('Email inválido'),
     customer_phone: z.string().min(7, 'Teléfono requerido'),
-    customer_id_card: z.string().optional(),
+    customer_id_card: z.string().min(5, 'Cédula requerida'),
     delivery_method: z.string().optional(),
     notas: z.string().optional(),
     data_consent: z.boolean().optional(),
