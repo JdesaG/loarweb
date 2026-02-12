@@ -9,41 +9,32 @@ export async function POST(request: Request) {
 
         const db = supabaseAdmin()
 
-        // Query product_pricing table directly (more reliable than RPC)
-        let query = db
-            .from('product_pricing')
-            .select('id, price')
-            .eq('product_id', input.productId)
-
-        if (input.styleName) {
-            query = query.or(`style_name.eq.${input.styleName},style_name.is.null`)
-        }
-        if (input.material) {
-            query = query.or(`material.eq.${input.material},material.is.null`)
-        }
-        if (input.designType) {
-            query = query.or(`design_type.eq.${input.designType},design_type.is.null`)
-        }
-
-        // Handle quantity tiers
-        const qty = input.quantity ?? 1
-        query = query.or(`min_qty.is.null,min_qty.lte.${qty}`)
-        query = query.or(`max_qty.is.null,max_qty.gte.${qty}`)
-        query = query.order('price', { ascending: true })
-        query = query.limit(1)
-
-        const { data, error } = await query
+        const { data, error } = await db.rpc('get_product_price', {
+            p_product_id: input.productId,
+            p_style_name: input.styleName || 'default',
+            p_material: input.material || '',
+            p_design_type: input.designType || '',
+            p_quantity: input.quantity ?? 1,
+        })
 
         if (error) throw error
 
-        if (data && data.length > 0) {
+        // RPC returns a single row or null/empty if no match
+        // get_product_price returns TABLE(pricing_id UUID, price DECIMAL)
+        // supabase-js might return it as an array if returns table, or object if returns record?
+        // Checking the definition: RETURNS TABLE. So it returns an array of rows.
+        // We used LIMIT 1, so it should be an array of length 0 or 1.
+
+        const rows = data as unknown as { pricing_id: string; price: number }[]
+
+        if (rows && rows.length > 0) {
             return NextResponse.json({
-                pricingId: data[0].id,
-                unitPrice: data[0].price,
+                pricingId: rows[0].pricing_id,
+                unitPrice: rows[0].price,
             })
         }
 
-        // No pricing rule found — this is OK, frontend will use 0 or base fallback
+        // No pricing rule found
         return NextResponse.json({
             pricingId: null,
             unitPrice: 0,

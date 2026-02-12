@@ -105,41 +105,54 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
     const isPlainMaterial = store.material?.toLowerCase().includes('llano') || store.material?.toLowerCase().includes('llan')
     const needsDesign = !isPlainMaterial && store.material !== ''
 
-    // ── Calculate price when designType + material + quantity are all set ─────
+    // ── Calculate price via API (RPC) ────────────────────────────────────────
     useEffect(() => {
+        // If critical fields are missing, reset price
         if (!store.designType || !store.material) {
-            store.setPrice(0, null) // Not enough info yet
+            store.setPrice(0, null)
             return
         }
 
-        // Find matching pricing rule(s) considering quantity tiers
-        const qty = store.quantity || 1
-        const matchingRules = pricingRules.filter((rule) => {
-            if (rule.design_type !== store.designType) return false
-            if (rule.material !== store.material) return false
-            // Check quantity range
-            const minOk = rule.min_qty === null || rule.min_qty === undefined || qty >= rule.min_qty
-            const maxOk = rule.max_qty === null || rule.max_qty === undefined || qty <= rule.max_qty
-            return minOk && maxOk
-        })
+        const controller = new AbortController()
 
-        if (matchingRules.length > 0) {
-            // Pick the most specific (lowest price or first match)
-            const best = matchingRules[0]
-            store.setPrice(best.price, best.id)
-        } else {
-            // Fallback: try to find a rule without quantity tier
-            const fallback = pricingRules.find(
-                (r) => r.design_type === store.designType && r.material === store.material
-            )
-            if (fallback) {
-                store.setPrice(fallback.price, fallback.id)
-            } else {
-                store.setPrice(0, null)
+        async function fetchPrice() {
+            try {
+                const res = await fetch('/api/calculate-price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productId: product.id,
+                        designType: store.designType,
+                        material: store.material,
+                        quantity: store.quantity || 1,
+                        styleName: store.styleName || 'default', // Pass style if available
+                    }),
+                    signal: controller.signal,
+                })
+
+                if (!res.ok) throw new Error('Error calculating price')
+
+                const data = await res.json()
+                store.setPrice(data.unitPrice, data.pricingId)
+            } catch (error: unknown) {
+                if (error instanceof Error && error.name !== 'AbortError') {
+                    console.error('Price calculation failed:', error)
+                    store.setPrice(0, null)
+                }
             }
         }
+
+        // Debounce slightly to avoid too many calls while typing quantity
+        const timer = setTimeout(() => {
+            fetchPrice()
+        }, 300)
+
+        return () => {
+            clearTimeout(timer)
+            controller.abort()
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [store.designType, store.material, store.quantity, pricingRules])
+    }, [store.designType, store.material, store.quantity, product.id])
 
     // ── Reset dependent fields when parent changes ───────────────────────────
     const handleDesignTypeChange = (v: string) => {

@@ -1,16 +1,16 @@
 // ─── Products ────────────────────────────────────────────────────────────────
 export interface Product {
     id: string
-    sku: string | null
+    sku: string
     name: string
-    category: string | null
+    category: string
     base_image: string | null
     has_sizes: boolean
-    available_sizes: string[] | null
-    available_colors: string[] | null
-    available_materials: string[] | null
+    available_sizes: string[]
+    available_colors: string[]
+    available_materials: string[]
     has_styles: boolean
-    available_styles: string[] | null
+    available_styles: string[]
     is_active: boolean
     created_at: string
     updated_at: string
@@ -20,11 +20,11 @@ export interface Product {
 export interface ProductPricing {
     id: string
     product_id: string
-    style_name: string | null
-    design_type: string | null
-    material: string | null
-    min_qty: number | null
-    max_qty: number | null
+    style_name: string
+    design_type: string
+    material: string
+    min_qty: number
+    max_qty: number
     price: number
     created_at: string
 }
@@ -40,6 +40,7 @@ export interface InventoryItem {
     size: string | null
     quantity_available: number
     is_visible: boolean
+    created_at: string
     updated_at: string
     // Joined data (optional)
     products?: {
