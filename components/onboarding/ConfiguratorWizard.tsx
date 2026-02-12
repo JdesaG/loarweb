@@ -1,18 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSupabase } from '@/hooks/supabase'
 import { useConfiguratorStore } from '@/stores/configuratorStore'
 import { useInventory } from '@/hooks/useInventory'
-import { usePriceCalculation } from '@/hooks/usePriceCalculation'
-import { DesignTypeSelector } from './DesignTypeSelector'
 import { ColorSizeSelector } from './ColorSizeSelector'
 import { ImageUploader } from './ImageUploader'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import type { Product, ProductPricing } from '@/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
@@ -28,8 +29,8 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
     const supabase = useSupabase()
     const store = useConfiguratorStore()
     const { inventory, loading: invLoading } = useInventory(product.id)
-    const { calculatePrice, loading: priceLoading } = usePriceCalculation()
     const [pricingRules, setPricingRules] = useState<ProductPricing[]>([])
+    const [pricingLoading, setPricingLoading] = useState(true)
 
     // ── Set product on mount ─────────────────────────────────────────────────
     useEffect(() => {
@@ -40,65 +41,147 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
     // ── Fetch pricing rules ──────────────────────────────────────────────────
     useEffect(() => {
         async function fetchData() {
+            setPricingLoading(true)
             const { data: pricing } = await supabase
                 .from('product_pricing')
                 .select('*')
                 .eq('product_id', product.id)
             setPricingRules((pricing as unknown as ProductPricing[]) ?? [])
+            setPricingLoading(false)
         }
         fetchData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [product.id])
 
-    // ── Recalculate price when relevant fields change ────────────────────────
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            const result = await calculatePrice({
-                productId: product.id,
-                styleName: store.styleName || undefined,
-                material: store.material || undefined,
-                designType: store.designType || undefined,
-                quantity: store.quantity,
-            })
-            if (result) {
-                store.setPrice(result.unitPrice, result.pricingId)
-            }
-        }, 300)
-        return () => clearTimeout(timer)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [store.styleName, store.material, store.designType, store.quantity, product.id])
+    // ══════════════════════════════════════════════════════════════════════════
+    //  DERIVED STATE — Cascading Dropdowns
+    // ══════════════════════════════════════════════════════════════════════════
 
-    if (invLoading) {
-        return <LoadingSpinner className="py-12" text="Cargando opciones..." />
+    // 1) Unique Design Types available for this product (from product_pricing)
+    const availableDesignTypes = useMemo(() =>
+        Array.from(new Set(pricingRules.map((p) => p.design_type).filter(Boolean))) as string[],
+        [pricingRules]
+    )
+
+    // 2) When a Design Type is selected, show only the Materials (Techniques)
+    //    that exist in product_pricing for that Design Type
+    const availableMaterials = useMemo(() => {
+        if (!store.designType) return []
+        const filtered = pricingRules.filter((p) => p.design_type === store.designType)
+        return Array.from(new Set(filtered.map((p) => p.material).filter(Boolean))) as string[]
+    }, [store.designType, pricingRules])
+
+    // 3) Determine if "Sublimado" is selected — restricts color to "Blanca"
+    const isSublimado = store.material?.toLowerCase() === 'sublimado'
+
+    // 4) Colors from inventory, filtered by the Sublimado rule
+    const availableColors = useMemo(() => {
+        const allColors = Array.from(
+            new Set(inventory.map((i) => i.color).filter(Boolean))
+        ) as string[]
+
+        if (isSublimado) {
+            // Only show white variants
+            const whites = allColors.filter(
+                (c) => c.toLowerCase().includes('blanc')
+            )
+            return whites.length > 0 ? whites : ['Blanca']
+        }
+        return allColors
+    }, [inventory, isSublimado])
+
+    // 5) Sizes from inventory filtered by selected color
+    const availableSizes = useMemo(() => {
+        const filtered = inventory.filter((i) => {
+            if (!store.color) return true
+            return i.color === store.color
+        })
+        return Array.from(new Set(filtered.map((i) => i.size).filter(Boolean))) as string[]
+    }, [inventory, store.color])
+
+    // 6) Design slots logic
+    const isDesignDual = store.designType?.toLowerCase().includes('dual')
+    const designSlots = isDesignDual ? 2 : 1
+    const isPlainMaterial = store.material?.toLowerCase().includes('llano') || store.material?.toLowerCase().includes('llan')
+    const needsDesign = !isPlainMaterial && store.material !== ''
+
+    // ── Calculate price when designType + material + quantity are all set ─────
+    useEffect(() => {
+        if (!store.designType || !store.material) {
+            store.setPrice(0, null) // Not enough info yet
+            return
+        }
+
+        // Find matching pricing rule(s) considering quantity tiers
+        const qty = store.quantity || 1
+        const matchingRules = pricingRules.filter((rule) => {
+            if (rule.design_type !== store.designType) return false
+            if (rule.material !== store.material) return false
+            // Check quantity range
+            const minOk = rule.min_qty === null || rule.min_qty === undefined || qty >= rule.min_qty
+            const maxOk = rule.max_qty === null || rule.max_qty === undefined || qty <= rule.max_qty
+            return minOk && maxOk
+        })
+
+        if (matchingRules.length > 0) {
+            // Pick the most specific (lowest price or first match)
+            const best = matchingRules[0]
+            store.setPrice(best.price, best.id)
+        } else {
+            // Fallback: try to find a rule without quantity tier
+            const fallback = pricingRules.find(
+                (r) => r.design_type === store.designType && r.material === store.material
+            )
+            if (fallback) {
+                store.setPrice(fallback.price, fallback.id)
+            } else {
+                store.setPrice(0, null)
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [store.designType, store.material, store.quantity, pricingRules])
+
+    // ── Reset dependent fields when parent changes ───────────────────────────
+    const handleDesignTypeChange = (v: string) => {
+        store.setField('designType', v)
+        store.setField('material', '')
+        store.setField('color', '')
+        store.setField('size', '')
     }
 
-    // ── Derived state ────────────────────────────────────────────────────────
-    const designSlots = store.designType?.toLowerCase().includes('dual') ? 2 : 0
-    const isPlain = store.designType?.toLowerCase().includes('llan') // "Llano" = 0 designs
-    const needsDesign = !isPlain && store.designType !== ''
-    const availableDesignTypes = Array.from(
-        new Set(pricingRules.map((p) => p.design_type).filter(Boolean))
-    ) as string[]
+    const handleMaterialChange = (v: string) => {
+        store.setField('material', v)
+        store.setField('color', '')
+        store.setField('size', '')
+    }
+
+    // ── Loading ──────────────────────────────────────────────────────────────
+    if (invLoading || pricingLoading) {
+        return <LoadingSpinner className="py-12" text="Cargando opciones..." />
+    }
 
     const canProceed = () => {
         switch (store.step) {
             case 1:
-                // Require design type, color, size
-                return store.designType !== '' && store.color !== '' && store.size !== ''
+                return (
+                    store.designType !== '' &&
+                    store.material !== '' &&
+                    store.color !== '' &&
+                    store.size !== ''
+                )
             case 2:
-                // If design needed, require at least the main image
                 if (needsDesign) {
-                    if (designSlots === 2) return store.imagePreview !== null && store.imagePreview2 !== null
+                    if (designSlots === 2)
+                        return store.imagePreview !== null && store.imagePreview2 !== null
                     return store.imagePreview !== null
                 }
-                return true // Plain = no images needed
+                return true // Llano = no images needed
             default:
                 return true
         }
     }
 
     const handleFinish = () => {
-        // Navigate to the summary page
         router.push(`/onboarding/${product.id}/resumen`)
     }
 
@@ -125,41 +208,80 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
             </div>
 
             {/* ══════════════════════════════════════════════════════════════════
-                Step 1: Configuración (Técnica, Color, Talla, Cantidad)
+                Step 1: Configuración
               ══════════════════════════════════════════════════════════════════ */}
             {store.step === 1 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                     <h3 className="text-lg font-semibold text-neutral-900">Configuración</h3>
 
-                    {/* Design type / Technique */}
-                    <DesignTypeSelector
-                        designTypes={
-                            availableDesignTypes.length > 0
-                                ? availableDesignTypes
-                                : ['DTF Normal', 'DTF Dual', 'Sublimado', 'Llano']
-                        }
-                        value={store.designType}
-                        onChange={(v) => store.setField('designType', v)}
-                    />
+                    {/* ─── Dropdown 1: Tipo de Diseño (Normal / Dual / Sin Diseño) ── */}
+                    <div className="space-y-2">
+                        <Label>Tipo de Diseño</Label>
+                        <Select value={store.designType} onValueChange={handleDesignTypeChange}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecciona tipo de diseño" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableDesignTypes.map((dt) => (
+                                    <SelectItem key={dt} value={dt}>{dt}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                    {/* Color & Size */}
-                    <ColorSizeSelector
-                        inventory={inventory}
-                        availableColors={product.available_colors ?? []}
-                        availableSizes={product.available_sizes ?? []}
-                        selectedColor={store.color}
-                        selectedSize={store.size}
-                        onColorChange={(v) => store.setField('color', v)}
-                        onSizeChange={(v) => store.setField('size', v)}
-                    />
+                    {/* ─── Dropdown 2: Técnica / Material (DTF / Sublimado / Llano) ── */}
+                    {store.designType && (
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                            <Label>Técnica</Label>
+                            {availableMaterials.length > 0 ? (
+                                <Select value={store.material} onValueChange={handleMaterialChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona técnica" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableMaterials.map((m) => (
+                                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <p className="text-sm text-amber-600">
+                                    No hay técnicas configuradas para este tipo de diseño.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
-                    {/* Quantity */}
+                    {/* ─── Color & Talla ──────────────────────────────────────────── */}
+                    {store.material && (
+                        <div className="animate-in fade-in duration-200">
+                            <ColorSizeSelector
+                                inventory={inventory}
+                                availableColors={availableColors}
+                                availableSizes={availableSizes}
+                                selectedColor={store.color}
+                                selectedSize={store.size}
+                                onColorChange={(v) => {
+                                    store.setField('color', v)
+                                    store.setField('size', '')
+                                }}
+                                onSizeChange={(v) => store.setField('size', v)}
+                            />
+                            {isSublimado && (
+                                <p className="text-xs text-neutral-500 mt-1 italic">
+                                    ⚠ Sublimado solo disponible en color blanco.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ─── Cantidad ────────────────────────────────────────────────── */}
                     <div className="space-y-2">
                         <Label>Cantidad</Label>
                         <Input
                             type="number"
                             min={1}
-                            max={99}
+                            max={999}
                             value={store.quantity}
                             onChange={(e) =>
                                 store.setField('quantity', Math.max(1, parseInt(e.target.value) || 1))
@@ -168,8 +290,8 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
                         />
                     </div>
 
-                    {/* Live price preview */}
-                    {store.unitPrice !== null && (
+                    {/* ─── Precio unitario (calculado en vivo) ─────────────────────── */}
+                    {store.unitPrice !== null && store.unitPrice > 0 && (
                         <div className="rounded-lg bg-neutral-50 border border-neutral-200 p-4 text-center">
                             <p className="text-sm text-neutral-500">Precio unitario</p>
                             <p className="text-2xl font-bold text-neutral-900">
@@ -181,11 +303,6 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
                                 </p>
                             )}
                         </div>
-                    )}
-                    {priceLoading && (
-                        <p className="text-xs text-neutral-400 animate-pulse text-center">
-                            Calculando precio...
-                        </p>
                     )}
                 </div>
             )}

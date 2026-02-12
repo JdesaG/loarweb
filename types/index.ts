@@ -33,6 +33,9 @@ export interface ProductPricing {
 export interface InventoryItem {
     id: string
     product_id: string
+    style: string | null
+    material: string | null
+    design_type: string | null
     color: string | null
     size: string | null
     quantity_available: number
