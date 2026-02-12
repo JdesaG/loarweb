@@ -105,7 +105,7 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
     const isPlainMaterial = store.material?.toLowerCase().includes('llano') || store.material?.toLowerCase().includes('llan')
     const needsDesign = !isPlainMaterial && store.material !== ''
 
-    // ── Calculate price via API (RPC) ────────────────────────────────────────
+    // ── Calculate price locally ──────────────────────────────────────────────
     useEffect(() => {
         // If critical fields are missing, reset price
         if (!store.designType || !store.material) {
@@ -113,46 +113,35 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
             return
         }
 
-        const controller = new AbortController()
+        const qty = store.quantity || 1
 
-        async function fetchPrice() {
-            try {
-                const res = await fetch('/api/calculate-price', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        productId: product.id,
-                        designType: store.designType,
-                        material: store.material,
-                        quantity: store.quantity || 1,
-                        styleName: store.styleName || 'default', // Pass style if available
-                    }),
-                    signal: controller.signal,
-                })
+        // Find matching rule based on Design Type + Material + Quantity Range
+        const matchingRule = pricingRules.find((rule) => {
+            // 1. Match Design Type & Material
+            if (rule.design_type !== store.designType) return false
+            if (rule.material !== store.material) return false
 
-                if (!res.ok) throw new Error('Error calculating price')
+            // 2. Match Style (optional, use 'default' or match store if needed)
+            // For now, assume we take the first match or specific style if implemented
+            // if (rule.style_name !== (store.styleName || 'default')) return false
 
-                const data = await res.json()
-                store.setPrice(data.unitPrice, data.pricingId)
-            } catch (error: unknown) {
-                if (error instanceof Error && error.name !== 'AbortError') {
-                    console.error('Price calculation failed:', error)
-                    store.setPrice(0, null)
-                }
-            }
+            // 3. Match Quantity Range
+            const min = rule.min_qty
+            const max = rule.max_qty
+
+            // Check if qty is within [min, max]
+            return qty >= min && qty <= max
+        })
+
+        if (matchingRule) {
+            store.setPrice(matchingRule.price, matchingRule.id)
+        } else {
+            // Fallback: No specific rule for this quantity? 
+            // Maybe find rule with lowest min_qty or just reset
+            console.warn('No pricing rule found for:', { dt: store.designType, mat: store.material, qty })
+            store.setPrice(0, null)
         }
-
-        // Debounce slightly to avoid too many calls while typing quantity
-        const timer = setTimeout(() => {
-            fetchPrice()
-        }, 300)
-
-        return () => {
-            clearTimeout(timer)
-            controller.abort()
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [store.designType, store.material, store.quantity, product.id])
+    }, [store.designType, store.material, store.quantity, pricingRules])
 
     // ── Reset dependent fields when parent changes ───────────────────────────
     const handleDesignTypeChange = (v: string) => {
