@@ -7,6 +7,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 
@@ -27,6 +28,9 @@ export function OrderDetail({ order, open, onOpenChange }: OrderDetailProps) {
                             {statusLabel(order.status)}
                         </Badge>
                     </DialogTitle>
+                    <DialogDescription>
+                        Detalles completos de la orden y estado actual.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">

@@ -19,7 +19,7 @@ export default function ProductsPage() {
 
     const handleSave = async (id: string, data: Partial<Product>) => {
         try {
-            const res = await fetch(`/api/inventory/${id}`, {
+            const res = await fetch(`/api/products/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),

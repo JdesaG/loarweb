@@ -7,6 +7,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,6 +56,7 @@ export function ProductEditor({ product, open, onOpenChange, onSave }: ProductEd
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Editar producto</DialogTitle>
+                    <DialogDescription>Modifique los detalles principales del producto.</DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
