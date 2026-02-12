@@ -1,78 +1,85 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
+import { useInventory } from '@/hooks/useInventory'
 import { InventoryRow } from '@/components/dashboard/InventoryRow'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { Boxes } from 'lucide-react'
+import {
+    Table,
+    TableBody,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import { Package } from 'lucide-react'
+import { toast } from 'sonner'
 import type { InventoryItem } from '@/types'
 
 export default function InventoryPage() {
-    const [inventory, setInventory] = useState<InventoryItem[]>([])
+    const [items, setItems] = useState<InventoryItem[]>([])
     const [loading, setLoading] = useState(true)
 
-    const fetchInventory = useCallback(async () => {
+    const fetchInventory = async () => {
         setLoading(true)
         try {
             const res = await fetch('/api/inventory')
-            if (!res.ok) throw new Error('Failed')
+            if (!res.ok) throw new Error('Failed to fetch inventory')
             const data = await res.json()
-            setInventory(data)
+            setItems(data)
         } catch {
-            console.error('Error fetching inventory')
+            toast.error('Error al cargar inventario')
         }
         setLoading(false)
-    }, [])
+    }
 
     useEffect(() => {
         fetchInventory()
-    }, [fetchInventory])
+    }, [])
 
-    const handleUpdate = async (id: string, data: { quantityAvailable?: number; isVisible?: boolean }) => {
-        const res = await fetch(`/api/inventory/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        })
-        if (!res.ok) throw new Error('Failed')
-        await fetchInventory()
+    const handleUpdate = async (id: string, data: Partial<InventoryItem>) => {
+        try {
+            const res = await fetch(`/api/inventory/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            })
+            if (!res.ok) throw new Error('Failed to update')
+            toast.success('Inventario actualizado')
+            fetchInventory()
+        } catch {
+            toast.error('Error al actualizar')
+        }
     }
 
-    if (loading) {
-        return <LoadingSpinner className="py-20" text="Cargando inventario..." />
+    if (loading) return <LoadingSpinner className="py-20" text="Cargando inventario..." />
+
+    if (items.length === 0) {
+        return <EmptyState title="Sin inventario" description="Agrega variantes de stock desde Supabase." icon={<Package className="h-8 w-8 text-neutral-400" />} />
     }
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Inventario</h1>
-                <p className="text-neutral-500 text-sm">Gestiona el stock y visibilidad de variantes</p>
-            </div>
+            <h1 className="text-2xl font-bold text-neutral-900">Inventario</h1>
 
-            {inventory.length === 0 ? (
-                <EmptyState
-                    title="Sin inventario"
-                    description="Agrega variantes de productos desde Supabase."
-                    icon={<Boxes className="h-8 w-8 text-neutral-400" />}
-                />
-            ) : (
-                <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-neutral-100 bg-neutral-50 text-left">
-                                <th className="px-4 py-3 font-medium text-neutral-600">Producto / Variante</th>
-                                <th className="px-4 py-3 font-medium text-neutral-600 w-40">Stock</th>
-                                <th className="px-4 py-3 font-medium text-neutral-600 w-20">Visible</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {inventory.map((item) => (
-                                <InventoryRow key={item.id} item={item} onUpdate={handleUpdate} />
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            <div className="overflow-x-auto rounded-lg border border-neutral-200">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-neutral-50">
+                            <TableHead>Producto</TableHead>
+                            <TableHead>Color</TableHead>
+                            <TableHead>Talla</TableHead>
+                            <TableHead>Stock</TableHead>
+                            <TableHead>Visible</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {items.map((item) => (
+                            <InventoryRow key={item.id} item={item} onUpdate={handleUpdate} />
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     )
 }

@@ -10,11 +10,10 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import type { DesignDetails } from '@/types'
 import { toast } from 'sonner'
 
 export default function ResumenPage({ params }: { params: Promise<{ productId: string }> }) {
-    use(params) // consume the promise
+    use(params)
     const router = useRouter()
     const store = useConfiguratorStore()
     const addItem = useCartStore((s) => s.addItem)
@@ -32,28 +31,35 @@ export default function ResumenPage({ params }: { params: Promise<{ productId: s
         )
     }
 
-    const designDetails: DesignDetails = {
-        style: store.style || undefined,
-        material: store.material || undefined,
-        design_type: store.designType || undefined,
-        color: store.color || undefined,
-        size: store.size || undefined,
-        placement: store.placement || undefined,
-        initial_letter: store.initialLetter || undefined,
-        image_url: store.imagePreview || undefined,
-    }
-
-    const unitPrice = store.unitPrice ?? product.base_price
-
     const handleAddToCart = () => {
-        addItem(product, store.quantity, unitPrice, designDetails)
+        addItem(product, store.quantity, store.unitPrice ?? 0, {
+            styleName: store.styleName || undefined,
+            selectedColor: store.color || undefined,
+            selectedSize: store.size || undefined,
+            material: store.material || undefined,
+            designType: store.designType || undefined,
+            designMainUrl: store.imagePreview || undefined,
+            placementInstructions: store.placement || undefined,
+            addInitial: store.hasInitial || undefined,
+            initialLetter: store.initialLetter || undefined,
+        })
         toast.success('Agregado al carrito')
         store.reset()
         router.push('/onboarding')
     }
 
     const handleBuyNow = () => {
-        addItem(product, store.quantity, unitPrice, designDetails)
+        addItem(product, store.quantity, store.unitPrice ?? 0, {
+            styleName: store.styleName || undefined,
+            selectedColor: store.color || undefined,
+            selectedSize: store.size || undefined,
+            material: store.material || undefined,
+            designType: store.designType || undefined,
+            designMainUrl: store.imagePreview || undefined,
+            placementInstructions: store.placement || undefined,
+            addInitial: store.hasInitial || undefined,
+            initialLetter: store.initialLetter || undefined,
+        })
         store.reset()
         router.push('/onboarding/checkout')
     }
@@ -76,7 +82,12 @@ export default function ResumenPage({ params }: { params: Promise<{ productId: s
                     product={product}
                     unitPrice={store.unitPrice}
                     quantity={store.quantity}
-                    designDetails={designDetails}
+                    styleName={store.styleName || undefined}
+                    material={store.material || undefined}
+                    designType={store.designType || undefined}
+                    selectedColor={store.color || undefined}
+                    selectedSize={store.size || undefined}
+                    addInitial={store.hasInitial}
                 />
 
                 <CartButton

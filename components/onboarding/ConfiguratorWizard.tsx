@@ -24,8 +24,14 @@ interface ConfiguratorWizardProps {
 
 export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
     const store = useConfiguratorStore()
-    const { inventory, loading: invLoading, styles, materials, designTypes } = useInventory(product.id)
+    const { inventory, loading: invLoading } = useInventory(product.id)
     const { calculatePrice, loading: priceLoading } = usePriceCalculation()
+
+    // Options come from the PRODUCT, not inventory
+    const styles = product.available_styles ?? []
+    const materials = product.available_materials ?? []
+    // For design types, we can derive from products_pricing or just show a free field
+    // For now we use what the product exposes
 
     // Initialize store with product
     useEffect(() => {
@@ -35,11 +41,10 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
 
     // Recalculate price when relevant fields change
     useEffect(() => {
-        if (!store.style && styles.length > 0) return
         const timer = setTimeout(async () => {
             const result = await calculatePrice({
                 productId: product.id,
-                styleName: store.style || undefined,
+                styleName: store.styleName || undefined,
                 material: store.material || undefined,
                 designType: store.designType || undefined,
                 quantity: store.quantity,
@@ -50,11 +55,14 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
         }, 300)
         return () => clearTimeout(timer)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [store.style, store.material, store.designType, store.quantity, product.id])
+    }, [store.styleName, store.material, store.designType, store.quantity, product.id])
 
     if (invLoading) {
         return <LoadingSpinner className="py-12" text="Cargando opciones..." />
     }
+
+    // Determine which steps to show based on product config
+    const hasStep1 = (product.has_styles && styles.length > 0) || materials.length > 0
 
     const canProceed = () => {
         switch (store.step) {
@@ -77,10 +85,10 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
                     <div
                         key={s}
                         className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all duration-300 ${s === store.step
-                                ? 'bg-neutral-900 text-white scale-110'
-                                : s < store.step
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-neutral-200 text-neutral-500'
+                            ? 'bg-neutral-900 text-white scale-110'
+                            : s < store.step
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-neutral-200 text-neutral-500'
                             }`}
                     >
                         {s < store.step ? '✓' : s}
@@ -95,21 +103,34 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
             {store.step === 1 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                     <h3 className="text-lg font-semibold text-neutral-900">Personalización</h3>
-                    <StyleSelector
-                        styles={styles}
-                        value={store.style}
-                        onChange={(v) => store.setField('style', v)}
-                    />
-                    <MaterialSelector
-                        materials={materials}
-                        value={store.material}
-                        onChange={(v) => store.setField('material', v)}
-                    />
+
+                    {product.has_styles && styles.length > 0 && (
+                        <StyleSelector
+                            styles={styles}
+                            value={store.styleName}
+                            onChange={(v) => store.setField('styleName', v)}
+                        />
+                    )}
+
+                    {materials.length > 0 && (
+                        <MaterialSelector
+                            materials={materials}
+                            value={store.material}
+                            onChange={(v) => store.setField('material', v)}
+                        />
+                    )}
+
                     <DesignTypeSelector
-                        designTypes={designTypes}
+                        designTypes={['Estampado', 'Bordado', 'Sublimación', 'Vinilo']}
                         value={store.designType}
                         onChange={(v) => store.setField('designType', v)}
                     />
+
+                    {!hasStep1 && (
+                        <p className="text-sm text-neutral-500">
+                            Este producto no tiene opciones de estilo o material. Presiona Siguiente.
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -119,13 +140,12 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
                     <h3 className="text-lg font-semibold text-neutral-900">Color, talla y cantidad</h3>
                     <ColorSizeSelector
                         inventory={inventory}
+                        availableColors={product.available_colors ?? []}
+                        availableSizes={product.available_sizes ?? []}
                         selectedColor={store.color}
                         selectedSize={store.size}
                         onColorChange={(v) => store.setField('color', v)}
                         onSizeChange={(v) => store.setField('size', v)}
-                        selectedStyle={store.style}
-                        selectedMaterial={store.material}
-                        selectedDesignType={store.designType}
                     />
                     <div className="space-y-2">
                         <Label>Cantidad</Label>

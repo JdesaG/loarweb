@@ -1,12 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Product } from '@/types'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
+import { Switch } from '@/components/ui/switch'
+import { Loader2 } from 'lucide-react'
 
 interface ProductEditorProps {
     product: Product | null
@@ -16,74 +22,67 @@ interface ProductEditorProps {
 }
 
 export function ProductEditor({ product, open, onOpenChange, onSave }: ProductEditorProps) {
-    const [name, setName] = useState(product?.name ?? '')
-    const [description, setDescription] = useState(product?.description ?? '')
-    const [basePrice, setBasePrice] = useState(product?.base_price ?? 0)
+    const [name, setName] = useState('')
+    const [category, setCategory] = useState('')
+    const [sku, setSku] = useState('')
+    const [isActive, setIsActive] = useState(true)
     const [saving, setSaving] = useState(false)
 
-    // Update fields when product changes
-    const handleOpen = (val: boolean) => {
-        if (val && product) {
+    useEffect(() => {
+        if (product) {
             setName(product.name)
-            setDescription(product.description ?? '')
-            setBasePrice(product.base_price)
+            setCategory(product.category ?? '')
+            setSku(product.sku ?? '')
+            setIsActive(product.is_active)
         }
-        onOpenChange(val)
-    }
+    }, [product])
 
     const handleSave = async () => {
         if (!product) return
         setSaving(true)
-        try {
-            await onSave(product.id, { name, description, base_price: basePrice })
-            toast.success('Producto actualizado')
-            onOpenChange(false)
-        } catch {
-            toast.error('Error al guardar')
-        }
+        await onSave(product.id, {
+            name,
+            category: category || null,
+            sku: sku || null,
+            is_active: isActive,
+        })
         setSaving(false)
+        onOpenChange(false)
     }
 
     return (
-        <Dialog open={open} onOpenChange={handleOpen}>
-            <DialogContent>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Editar producto</DialogTitle>
-                    <DialogDescription>Modifica los datos del producto.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-2">
+
+                <div className="space-y-4">
                     <div className="space-y-2">
                         <Label>Nombre</Label>
                         <Input value={name} onChange={(e) => setName(e.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Descripción</Label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={3}
-                            className="flex w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm shadow-sm transition-colors focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-200 resize-none"
-                        />
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Categoría</Label>
+                            <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>SKU</Label>
+                            <Input value={sku} onChange={(e) => setSku(e.target.value)} />
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label>Precio base (USD)</Label>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            value={basePrice}
-                            onChange={(e) => setBasePrice(parseFloat(e.target.value) || 0)}
-                        />
+
+                    <div className="flex items-center justify-between">
+                        <Label>Activo en catálogo</Label>
+                        <Switch checked={isActive} onCheckedChange={setIsActive} />
                     </div>
+
+                    <Button onClick={handleSave} disabled={saving || !name.trim()} className="w-full">
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar'}
+                    </Button>
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleSave} disabled={saving}>
-                        {saving ? 'Guardando...' : 'Guardar'}
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     )

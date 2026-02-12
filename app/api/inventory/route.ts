@@ -9,13 +9,7 @@ export async function GET() {
 
         const { data, error } = await db
             .from('inventory')
-            .select(`
-        *,
-        products (
-          name,
-          images
-        )
-      `)
+            .select('*, products(name, base_image)')
             .order('created_at', { ascending: false })
 
         if (error) throw error

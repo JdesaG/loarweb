@@ -1,62 +1,106 @@
 'use client'
 
+import type { Product } from '@/types'
 import { formatCurrency } from '@/lib/utils'
-import type { Product, DesignDetails } from '@/types'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface PriceSummaryProps {
     product: Product
     unitPrice: number | null
     quantity: number
-    designDetails: DesignDetails
+    styleName?: string
+    material?: string
+    designType?: string
+    selectedColor?: string
+    selectedSize?: string
+    addInitial?: boolean
+    initialPrice?: number
 }
 
-export function PriceSummary({ product, unitPrice, quantity, designDetails }: PriceSummaryProps) {
-    const price = unitPrice ?? product.base_price
-    const subtotal = price * quantity
+export function PriceSummary({
+    product,
+    unitPrice,
+    quantity,
+    styleName,
+    material,
+    designType,
+    selectedColor,
+    selectedSize,
+    addInitial,
+    initialPrice,
+}: PriceSummaryProps) {
+    const price = unitPrice ?? 0
+    const initialTotal = addInitial && initialPrice ? initialPrice * quantity : 0
+    const subtotal = price * quantity + initialTotal
 
     return (
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 space-y-3">
-            <h4 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide">
-                Resumen de precio
-            </h4>
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Resumen del pedido</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="flex justify-between text-sm">
+                    <span className="text-neutral-600">Producto</span>
+                    <span className="font-medium">{product.name}</span>
+                </div>
 
-            <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-neutral-600">
-                    <span>{product.name}</span>
+                {styleName && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">Estilo</span>
+                        <span>{styleName}</span>
+                    </div>
+                )}
+
+                {material && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">Material</span>
+                        <span>{material}</span>
+                    </div>
+                )}
+
+                {designType && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">Tipo diseño</span>
+                        <span>{designType}</span>
+                    </div>
+                )}
+
+                {selectedColor && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">Color</span>
+                        <span>{selectedColor}</span>
+                    </div>
+                )}
+
+                {selectedSize && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">Talla</span>
+                        <span>{selectedSize}</span>
+                    </div>
+                )}
+
+                <div className="flex justify-between text-sm">
+                    <span className="text-neutral-600">Precio unitario</span>
                     <span>{formatCurrency(price)}</span>
                 </div>
 
-                {designDetails.style && (
-                    <div className="flex justify-between text-neutral-500">
-                        <span>Estilo: {designDetails.style}</span>
-                    </div>
-                )}
-                {designDetails.material && (
-                    <div className="flex justify-between text-neutral-500">
-                        <span>Material: {designDetails.material}</span>
-                    </div>
-                )}
-                {designDetails.color && (
-                    <div className="flex justify-between text-neutral-500">
-                        <span>Color: {designDetails.color}</span>
-                    </div>
-                )}
-                {designDetails.size && (
-                    <div className="flex justify-between text-neutral-500">
-                        <span>Talla: {designDetails.size}</span>
-                    </div>
-                )}
-
-                <div className="flex justify-between text-neutral-600">
-                    <span>Cantidad</span>
+                <div className="flex justify-between text-sm">
+                    <span className="text-neutral-600">Cantidad</span>
                     <span>×{quantity}</span>
                 </div>
 
-                <div className="border-t border-neutral-200 pt-2 flex justify-between font-bold text-neutral-900 text-base">
+                {addInitial && initialPrice && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-neutral-600">Iniciales (×{quantity})</span>
+                        <span>{formatCurrency(initialTotal)}</span>
+                    </div>
+                )}
+
+                <div className="border-t border-neutral-200 pt-2 flex justify-between text-base font-bold">
                     <span>Total</span>
                     <span>{formatCurrency(subtotal)}</span>
                 </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     )
 }

@@ -5,7 +5,7 @@ import { useProducts } from '@/hooks/useProducts'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { formatCurrency } from '@/lib/utils'
-import { ShoppingCart, Package, DollarSign, Clock } from 'lucide-react'
+import { DollarSign, Package, ShoppingCart, TrendingUp } from 'lucide-react'
 
 export default function DashboardPage() {
     const { orders, loading: ordersLoading } = useOrders()
@@ -13,77 +13,75 @@ export default function DashboardPage() {
 
     const loading = ordersLoading || productsLoading
 
-    if (loading) {
-        return <LoadingSpinner className="py-20" text="Cargando métricas..." />
-    }
+    if (loading) return <LoadingSpinner className="py-20" text="Cargando dashboard..." />
 
-    // Calculate metrics
-    const totalOrders = orders.length
+    const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0)
     const pendingOrders = orders.filter((o) => o.status === 'pending').length
-    const totalRevenue = orders
-        .filter((o) => o.status !== 'cancelled')
-        .reduce((sum, o) => sum + o.total_amount, 0)
-    const totalProducts = products.length
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
-                <p className="text-neutral-500 text-sm">Resumen general de tu negocio</p>
-            </div>
+        <div className="space-y-8">
+            <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
 
+            {/* Stat cards */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                    title="Total Pedidos"
-                    value={totalOrders}
-                    icon={<ShoppingCart className="h-5 w-5" />}
-                />
-                <StatCard
-                    title="Pendientes"
-                    value={pendingOrders}
-                    icon={<Clock className="h-5 w-5" />}
-                />
                 <StatCard
                     title="Ingresos"
                     value={formatCurrency(totalRevenue)}
                     icon={<DollarSign className="h-5 w-5" />}
                 />
                 <StatCard
+                    title="Órdenes"
+                    value={orders.length.toString()}
+                    icon={<ShoppingCart className="h-5 w-5" />}
+                />
+                <StatCard
                     title="Productos"
-                    value={totalProducts}
+                    value={products.length.toString()}
                     icon={<Package className="h-5 w-5" />}
+                />
+                <StatCard
+                    title="Pendientes"
+                    value={pendingOrders.toString()}
+                    icon={<TrendingUp className="h-5 w-5" />}
                 />
             </div>
 
-            {/* Recent orders preview */}
+            {/* Recent orders */}
             <div>
-                <h2 className="text-lg font-semibold text-neutral-900 mb-3">Últimos pedidos</h2>
-                {orders.length === 0 ? (
-                    <p className="text-sm text-neutral-500">No hay pedidos aún.</p>
-                ) : (
-                    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-neutral-100 bg-neutral-50 text-left">
-                                    <th className="px-4 py-3 font-medium text-neutral-600">Código</th>
-                                    <th className="px-4 py-3 font-medium text-neutral-600">Total</th>
-                                    <th className="px-4 py-3 font-medium text-neutral-600">Estado</th>
+                <h2 className="mb-4 text-lg font-semibold text-neutral-900">Últimas órdenes</h2>
+                <div className="overflow-hidden rounded-lg border border-neutral-200">
+                    <table className="w-full text-sm">
+                        <thead className="bg-neutral-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left font-medium text-neutral-500">Código</th>
+                                <th className="px-4 py-3 text-left font-medium text-neutral-500">Cliente</th>
+                                <th className="px-4 py-3 text-left font-medium text-neutral-500">Total</th>
+                                <th className="px-4 py-3 text-left font-medium text-neutral-500">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {orders.slice(0, 5).map((order) => (
+                                <tr key={order.id} className="border-t border-neutral-100 hover:bg-neutral-50">
+                                    <td className="px-4 py-3 font-mono">{order.order_code}</td>
+                                    <td className="px-4 py-3 text-neutral-700">{order.customer_name}</td>
+                                    <td className="px-4 py-3 font-semibold">{formatCurrency(order.total)}</td>
+                                    <td className="px-4 py-3">
+                                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-neutral-100 text-neutral-700">
+                                            {order.status}
+                                        </span>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {orders.slice(0, 5).map((order) => (
-                                    <tr key={order.id} className="border-b border-neutral-50">
-                                        <td className="px-4 py-3 font-mono text-xs">{order.order_code}</td>
-                                        <td className="px-4 py-3 font-semibold">{formatCurrency(order.total_amount)}</td>
-                                        <td className="px-4 py-3">
-                                            <span className="capitalize text-neutral-600">{order.status}</span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                            ))}
+                            {orders.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-neutral-400">
+                                        No hay órdenes aún
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     )

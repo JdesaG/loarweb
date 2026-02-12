@@ -1,122 +1,159 @@
-// ─── Database Row Types ──────────────────────────────────────────────────────
-
+// ─── Products ────────────────────────────────────────────────────────────────
 export interface Product {
     id: string
+    sku: string | null
     name: string
-    description: string | null
-    base_price: number
+    category: string | null
+    base_image: string | null
+    has_sizes: boolean
+    available_sizes: string[] | null
+    available_colors: string[] | null
+    available_materials: string[] | null
+    has_styles: boolean
+    available_styles: string[] | null
     is_active: boolean
-    images: string[]
     created_at: string
     updated_at: string
 }
 
+// ─── Products Pricing ────────────────────────────────────────────────────────
+export interface ProductPricing {
+    id: string
+    product_id: string
+    style_name: string | null
+    design_type: string | null
+    material: string | null
+    min_qty: number | null
+    max_qty: number | null
+    price: number
+    created_at: string
+}
+
+// ─── Inventory ───────────────────────────────────────────────────────────────
 export interface InventoryItem {
     id: string
     product_id: string
-    style: string | null
-    material: string | null
-    design_type: string | null
     color: string | null
     size: string | null
     quantity_available: number
     is_visible: boolean
     created_at: string
-    updated_at: string
-    products?: Pick<Product, 'name' | 'images'>
+    // Joined data (optional)
+    products?: {
+        name: string
+        base_image: string | null
+    }
 }
+
+// ─── Orders ──────────────────────────────────────────────────────────────────
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'completed' | 'cancelled'
+export type PaymentStatus = 'pending' | 'paid' | 'refunded'
 
 export interface Order {
     id: string
     order_code: string
-    customer_info: CustomerInfo
+    customer_name: string
+    customer_phone: string | null
+    customer_email: string | null
+    customer_id_card: string | null
+    data_consent: boolean | null
+    consent_timestamp: string | null
+    subtotal: number
+    tax: number
+    total: number
     status: OrderStatus
-    total_amount: number
+    payment_status: string | null
+    delivery_method: string | null
+    notas: string | null
     created_at: string
     updated_at: string
+    // Joined data (optional)
     order_items?: OrderItem[]
 }
 
+// ─── Order Items ─────────────────────────────────────────────────────────────
 export interface OrderItem {
     id: string
     order_id: string
     product_id: string
+    pricing_id: string | null
+    product_name: string | null
+    style_name: string | null
+    selected_color: string | null
+    selected_size: string | null
+    material: string | null
+    design_type: string | null
     quantity: number
     unit_price: number
-    subtotal: number
-    design_details: DesignDetails | null
+    design_main_url: string | null
+    design_secondary_url: string | null
+    placement_instructions: string | null
+    add_initial: boolean | null
+    initial_letter: string | null
+    initial_price: number | null
+    item_total: number
     created_at: string
-    products?: Pick<Product, 'name' | 'images'>
 }
 
-// ─── Business Types ──────────────────────────────────────────────────────────
-
-export interface CustomerInfo {
-    fullName: string
-    email: string
-    phone: string
-    address: string
-    notes?: string
+// ─── Designs ─────────────────────────────────────────────────────────────────
+export interface Design {
+    id: string
+    customer_email: string | null
+    customer_id_card: string | null
+    design_name: string | null
+    design_image_url: string | null
+    thumbnail_url: string | null
+    design_role: string | null
+    usage_count: number
+    last_used: string | null
+    is_active: boolean
+    uploaded_at: string
 }
 
-export interface DesignDetails {
-    style?: string
-    material?: string
-    design_type?: string
-    color?: string
-    size?: string
-    custom_text?: string
-    placement?: string
-    image_url?: string
-    initial_letter?: string
-    [key: string]: unknown
-}
-
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'completed' | 'cancelled'
-
-// ─── Cart Types ──────────────────────────────────────────────────────────────
-
+// ─── Cart (client-side) ──────────────────────────────────────────────────────
 export interface CartItem {
-    id: string // unique cart-item id
+    id: string
     product: Product
     quantity: number
     unitPrice: number
-    designDetails: DesignDetails
+    styleName?: string
+    selectedColor?: string
+    selectedSize?: string
+    material?: string
+    designType?: string
+    designMainUrl?: string
+    designSecondaryUrl?: string
+    placementInstructions?: string
+    addInitial?: boolean
+    initialLetter?: string
+    initialPrice?: number
 }
 
-// ─── Configurator Types ──────────────────────────────────────────────────────
-
+// ─── Configurator Store ──────────────────────────────────────────────────────
 export interface ConfiguratorState {
-    step: number
-    productId: string | null
     product: Product | null
-    style: string
+    step: number
+    // Step 1
+    styleName: string
     material: string
     designType: string
+    // Step 2
     color: string
     size: string
-    customText: string
-    placement: string
+    quantity: number
+    // Step 3
     imageFile: File | null
     imagePreview: string | null
-    initialLetter: string
+    placement: string
     hasInitial: boolean
+    initialLetter: string
+    // Computed
     unitPrice: number | null
     pricingId: string | null
-    quantity: number
 }
 
-// ─── API Response Types ──────────────────────────────────────────────────────
-
+// ─── API Responses ───────────────────────────────────────────────────────────
 export interface PriceResponse {
     pricingId: string | null
     unitPrice: number
-}
-
-export interface CreateOrderResponse {
-    orderCode: string
-}
-
-export interface ApiError {
-    error: string
 }

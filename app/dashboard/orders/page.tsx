@@ -35,9 +35,7 @@ export default function OrdersPage() {
 
             <OrderTable
                 orders={orders}
-                loading={loading}
                 onStatusChange={handleStatusChange}
-                onFilter={handleFilter}
             />
         </div>
     )

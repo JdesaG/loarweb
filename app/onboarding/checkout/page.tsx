@@ -34,6 +34,10 @@ export default function CheckoutPage() {
     const onSubmit = async (customer: CustomerInfoInput) => {
         setSubmitting(true)
         try {
+            const subtotal = total
+            const tax = 0
+            const grandTotal = subtotal + tax
+
             const res = await fetch('/api/create-order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -41,11 +45,24 @@ export default function CheckoutPage() {
                     customer,
                     items: items.map((item) => ({
                         product_id: item.product.id,
+                        product_name: item.product.name,
+                        style_name: item.styleName || null,
+                        selected_color: item.selectedColor || null,
+                        selected_size: item.selectedSize || null,
+                        material: item.material || null,
+                        design_type: item.designType || null,
                         quantity: item.quantity,
                         unit_price: item.unitPrice,
-                        design_details: item.designDetails,
+                        design_main_url: item.designMainUrl || null,
+                        placement_instructions: item.placementInstructions || null,
+                        add_initial: item.addInitial ?? false,
+                        initial_letter: item.initialLetter || null,
+                        initial_price: item.initialPrice ?? 0,
+                        item_total: item.unitPrice * item.quantity + (item.addInitial && item.initialPrice ? item.initialPrice * item.quantity : 0),
                     })),
-                    totalAmount: total,
+                    subtotal,
+                    tax,
+                    total: grandTotal,
                 }),
             })
 
@@ -138,6 +155,8 @@ export default function CheckoutPage() {
                                         <p className="text-sm font-medium text-neutral-900 truncate">{item.product.name}</p>
                                         <p className="text-xs text-neutral-500">
                                             ×{item.quantity} · {formatCurrency(item.unitPrice)}
+                                            {item.selectedColor && ` · ${item.selectedColor}`}
+                                            {item.selectedSize && ` · ${item.selectedSize}`}
                                         </p>
                                     </div>
                                     <p className="font-semibold text-neutral-900 text-sm">
@@ -164,32 +183,31 @@ export default function CheckoutPage() {
 
                     <div className="space-y-2">
                         <Label>Nombre completo</Label>
-                        <Input {...register('fullName')} placeholder="Juan Pérez" />
-                        {errors.fullName && <p className="text-xs text-red-500">{errors.fullName.message}</p>}
+                        <Input {...register('customer_name')} placeholder="Juan Pérez" />
+                        {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name.message}</p>}
                     </div>
 
                     <div className="space-y-2">
                         <Label>Email</Label>
-                        <Input {...register('email')} type="email" placeholder="correo@ejemplo.com" />
-                        {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+                        <Input {...register('customer_email')} type="email" placeholder="correo@ejemplo.com" />
+                        {errors.customer_email && <p className="text-xs text-red-500">{errors.customer_email.message}</p>}
                     </div>
 
                     <div className="space-y-2">
                         <Label>Teléfono</Label>
-                        <Input {...register('phone')} placeholder="+593 9XX XXX XXXX" />
-                        {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+                        <Input {...register('customer_phone')} placeholder="+593 9XX XXX XXXX" />
+                        {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone.message}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Dirección</Label>
-                        <Input {...register('address')} placeholder="Ciudad, calle, número..." />
-                        {errors.address && <p className="text-xs text-red-500">{errors.address.message}</p>}
+                        <Label>Cédula (opcional)</Label>
+                        <Input {...register('customer_id_card')} placeholder="1234567890" />
                     </div>
 
                     <div className="space-y-2">
                         <Label>Notas (opcional)</Label>
                         <textarea
-                            {...register('notes')}
+                            {...register('notas')}
                             rows={2}
                             placeholder="Instrucciones adicionales..."
                             className="flex w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm shadow-sm transition-colors focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-200 resize-none"

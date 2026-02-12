@@ -54,9 +54,9 @@ export default function ConfiguratorPage({ params }: { params: Promise<{ product
                 <div className="grid gap-8 md:grid-cols-2">
                     {/* Product image */}
                     <div className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100">
-                        {product.images?.[0] ? (
+                        {product.base_image ? (
                             <Image
-                                src={product.images[0]}
+                                src={product.base_image}
                                 alt={product.name}
                                 fill
                                 className="object-cover"

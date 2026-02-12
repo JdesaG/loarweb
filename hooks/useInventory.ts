@@ -14,7 +14,7 @@ export function useInventory(productId?: string) {
         setLoading(true)
         let query = supabase
             .from('inventory')
-            .select('*, products(name, images)')
+            .select('*, products(name, base_image)')
             .eq('is_visible', true)
             .order('created_at', { ascending: false })
 
@@ -52,10 +52,7 @@ export function useInventory(productId?: string) {
         }
     }, [supabase, productId, fetchInventory])
 
-    // Derived data: unique values for selects
-    const styles = [...new Set(inventory.map((i) => i.style).filter(Boolean))] as string[]
-    const materials = [...new Set(inventory.map((i) => i.material).filter(Boolean))] as string[]
-    const designTypes = [...new Set(inventory.map((i) => i.design_type).filter(Boolean))] as string[]
+    // Derived data: unique values for selects (only color and size from inventory)
     const colors = [...new Set(inventory.map((i) => i.color).filter(Boolean))] as string[]
     const sizes = [...new Set(inventory.map((i) => i.size).filter(Boolean))] as string[]
 
@@ -64,9 +61,6 @@ export function useInventory(productId?: string) {
         loading,
         error,
         refetch: fetchInventory,
-        styles,
-        materials,
-        designTypes,
         colors,
         sizes,
     }

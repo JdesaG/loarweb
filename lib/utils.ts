@@ -47,6 +47,15 @@ export function getStatusConfig(status: OrderStatus) {
     return STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
 }
 
+export function statusLabel(status: string): string {
+    return getStatusConfig(status as OrderStatus).label
+}
+
+export function statusColor(status: string): string {
+    const c = getStatusConfig(status as OrderStatus)
+    return `${c.color} ${c.bg}`
+}
+
 // ─── Stock indicator ─────────────────────────────────────────────────────────
 export function getStockColor(qty: number): string {
     if (qty < 5) return 'text-red-600'

@@ -2,23 +2,17 @@
 
 import { useCartStore } from '@/stores/cartStore'
 
-// Thin wrapper around the Zustand store for consistency
 export function useCart() {
     const items = useCartStore((s) => s.items)
     const addItem = useCartStore((s) => s.addItem)
     const removeItem = useCartStore((s) => s.removeItem)
-    const updateQuantity = useCartStore((s) => s.updateQuantity)
     const clearCart = useCartStore((s) => s.clearCart)
-    const getTotal = useCartStore((s) => s.getTotal)
-    const getItemCount = useCartStore((s) => s.getItemCount)
 
-    return {
-        items,
-        addItem,
-        removeItem,
-        updateQuantity,
-        clearCart,
-        total: getTotal(),
-        itemCount: getItemCount(),
-    }
+    const itemCount = items.length
+    const total = items.reduce((sum, item) => {
+        const initialCost = item.addInitial && item.initialPrice ? item.initialPrice * item.quantity : 0
+        return sum + item.unitPrice * item.quantity + initialCost
+    }, 0)
+
+    return { items, addItem, removeItem, clearCart, itemCount, total }
 }
