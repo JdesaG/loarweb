@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useConfiguratorStore } from '@/stores/configuratorStore'
 import { useCartStore } from '@/stores/cartStore'
 import { PriceSummary } from '@/components/onboarding/PriceSummary'
-import { CartButton } from '@/components/onboarding/CartButton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ResumenPage({ params }: { params: Promise<{ productId: string }> }) {
@@ -31,35 +30,28 @@ export default function ResumenPage({ params }: { params: Promise<{ productId: s
         )
     }
 
-    const handleAddToCart = () => {
+    const addToCart = () => {
         addItem(product, store.quantity, store.unitPrice ?? 0, {
-            styleName: store.styleName || undefined,
             selectedColor: store.color || undefined,
             selectedSize: store.size || undefined,
-            material: store.material || undefined,
             designType: store.designType || undefined,
-            designMainUrl: store.imagePreview || undefined,
+            designMainUrl: store.designMainUrl || undefined,
+            designSecondaryUrl: store.designSecondaryUrl || undefined,
             placementInstructions: store.placement || undefined,
             addInitial: store.hasInitial || undefined,
             initialLetter: store.initialLetter || undefined,
         })
+    }
+
+    const handleBuyAnother = () => {
+        addToCart()
         toast.success('Agregado al carrito')
         store.reset()
         router.push('/onboarding')
     }
 
-    const handleBuyNow = () => {
-        addItem(product, store.quantity, store.unitPrice ?? 0, {
-            styleName: store.styleName || undefined,
-            selectedColor: store.color || undefined,
-            selectedSize: store.size || undefined,
-            material: store.material || undefined,
-            designType: store.designType || undefined,
-            designMainUrl: store.imagePreview || undefined,
-            placementInstructions: store.placement || undefined,
-            addInitial: store.hasInitial || undefined,
-            initialLetter: store.initialLetter || undefined,
-        })
+    const handleFinishPurchase = () => {
+        addToCart()
         store.reset()
         router.push('/onboarding/checkout')
     }
@@ -82,18 +74,32 @@ export default function ResumenPage({ params }: { params: Promise<{ productId: s
                     product={product}
                     unitPrice={store.unitPrice}
                     quantity={store.quantity}
-                    styleName={store.styleName || undefined}
-                    material={store.material || undefined}
                     designType={store.designType || undefined}
                     selectedColor={store.color || undefined}
                     selectedSize={store.size || undefined}
                     addInitial={store.hasInitial}
                 />
 
-                <CartButton
-                    onAddToCart={handleAddToCart}
-                    onBuyNow={handleBuyNow}
-                />
+                <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={handleBuyAnother}
+                        className="flex-1"
+                    >
+                        <ShoppingCart className="h-4 w-4" />
+                        Comprar otra prenda
+                    </Button>
+                    <Button
+                        variant="brand"
+                        size="lg"
+                        onClick={handleFinishPurchase}
+                        className="flex-1"
+                    >
+                        <CreditCard className="h-4 w-4" />
+                        Terminar compra
+                    </Button>
+                </div>
             </main>
         </div>
     )

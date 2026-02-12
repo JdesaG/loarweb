@@ -22,6 +22,7 @@ export default function CheckoutPage() {
     const { items, total, clearCart, removeItem } = useCart()
     const [submitting, setSubmitting] = useState(false)
     const [orderCode, setOrderCode] = useState<string | null>(null)
+    const [acceptTerms, setAcceptTerms] = useState(false)
 
     const {
         register,
@@ -32,6 +33,11 @@ export default function CheckoutPage() {
     })
 
     const onSubmit = async (customer: CustomerInfoInput) => {
+        if (!acceptTerms) {
+            toast.error('Debes aceptar los términos y condiciones')
+            return
+        }
+
         setSubmitting(true)
         try {
             const subtotal = total
@@ -54,6 +60,7 @@ export default function CheckoutPage() {
                         quantity: item.quantity,
                         unit_price: item.unitPrice,
                         design_main_url: item.designMainUrl || null,
+                        design_secondary_url: item.designSecondaryUrl || null,
                         placement_instructions: item.placementInstructions || null,
                         add_initial: item.addInitial ?? false,
                         initial_letter: item.initialLetter || null,
@@ -157,6 +164,7 @@ export default function CheckoutPage() {
                                             ×{item.quantity} · {formatCurrency(item.unitPrice)}
                                             {item.selectedColor && ` · ${item.selectedColor}`}
                                             {item.selectedSize && ` · ${item.selectedSize}`}
+                                            {item.designType && ` · ${item.designType}`}
                                         </p>
                                     </div>
                                     <p className="font-semibold text-neutral-900 text-sm">
@@ -188,30 +196,38 @@ export default function CheckoutPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input {...register('customer_email')} type="email" placeholder="correo@ejemplo.com" />
-                        {errors.customer_email && <p className="text-xs text-red-500">{errors.customer_email.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
                         <Label>Teléfono</Label>
                         <Input {...register('customer_phone')} placeholder="+593 9XX XXX XXXX" />
                         {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone.message}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Cédula (opcional)</Label>
-                        <Input {...register('customer_id_card')} placeholder="1234567890" />
+                        <Label>Email</Label>
+                        <Input {...register('customer_email')} type="email" placeholder="correo@ejemplo.com" />
+                        {errors.customer_email && <p className="text-xs text-red-500">{errors.customer_email.message}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Notas (opcional)</Label>
-                        <textarea
-                            {...register('notas')}
-                            rows={2}
-                            placeholder="Instrucciones adicionales..."
-                            className="flex w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm shadow-sm transition-colors focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-200 resize-none"
+                        <Label>Cédula</Label>
+                        <Input {...register('customer_id_card')} placeholder="1234567890" />
+                    </div>
+
+                    {/* Terms & Conditions */}
+                    <div className="flex items-start gap-3 rounded-lg border border-neutral-200 p-4 bg-neutral-50">
+                        <input
+                            type="checkbox"
+                            id="accept-terms"
+                            checked={acceptTerms}
+                            onChange={(e) => setAcceptTerms(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500"
                         />
+                        <label htmlFor="accept-terms" className="text-sm text-neutral-600 cursor-pointer">
+                            Acepto los{' '}
+                            <span className="font-medium text-neutral-900 underline">
+                                Términos y Condiciones
+                            </span>{' '}
+                            y autorizo el uso de mis datos personales para el procesamiento de este pedido.
+                        </label>
                     </div>
 
                     <Button
@@ -219,7 +235,7 @@ export default function CheckoutPage() {
                         variant="brand"
                         size="lg"
                         className="w-full"
-                        disabled={submitting}
+                        disabled={submitting || !acceptTerms}
                     >
                         {submitting ? (
                             <>
@@ -227,7 +243,7 @@ export default function CheckoutPage() {
                                 Procesando...
                             </>
                         ) : (
-                            `Confirmar pedido · ${formatCurrency(total)}`
+                            `Enviar pedido · ${formatCurrency(total)}`
                         )}
                     </Button>
                 </form>

@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils'
 interface ImageUploaderProps {
     imagePreview: string | null
     onFileChange: (file: File | null, preview: string | null) => void
+    label?: string
 }
 
-export function ImageUploader({ imagePreview, onFileChange }: ImageUploaderProps) {
+export function ImageUploader({ imagePreview, onFileChange, label = 'Imagen de diseño' }: ImageUploaderProps) {
     const [dragActive, setDragActive] = useState(false)
 
     const handleFile = useCallback(
@@ -47,7 +48,7 @@ export function ImageUploader({ imagePreview, onFileChange }: ImageUploaderProps
 
     return (
         <div className="space-y-2">
-            <Label>Imagen de diseño (opcional)</Label>
+            <Label>{label}</Label>
             {imagePreview ? (
                 <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-neutral-200">
                     <Image src={imagePreview} alt="Preview" fill className="object-contain" />

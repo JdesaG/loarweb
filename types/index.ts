@@ -133,20 +133,22 @@ export interface CartItem {
 export interface ConfiguratorState {
     product: Product | null
     step: number
-    // Step 1
-    styleName: string
-    material: string
+    // Step 1: Configuration
     designType: string
-    // Step 2
     color: string
     size: string
     quantity: number
-    // Step 3
+    // Step 2: Design images
     imageFile: File | null
     imagePreview: string | null
+    imageFile2: File | null
+    imagePreview2: string | null
     placement: string
     hasInitial: boolean
     initialLetter: string
+    // Uploaded URLs (after Supabase upload)
+    designMainUrl: string | null
+    designSecondaryUrl: string | null
     // Computed
     unitPrice: number | null
     pricingId: string | null
