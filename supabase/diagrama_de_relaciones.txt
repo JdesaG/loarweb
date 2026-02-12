@@ -1,0 +1,18 @@
+products (id)
+    │
+    ├── product_pricing (product_id)
+    │       └── precios por material, diseño, rango de cantidad
+    │
+    ├── inventory (product_id)
+    │       └── stock por color y talla
+    │
+    └── order_items (product_id)
+            └── referencia en pedidos
+
+orders (id)
+    │
+    └── order_items (order_id)
+            └── líneas de cada pedido
+
+designs (independiente)
+    └── repositorio de imágenes por cliente

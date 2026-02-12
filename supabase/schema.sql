@@ -1,210 +1,292 @@
--- ============================================================================
--- LOAR Backend — Full Database Schema
--- Run this in Supabase Dashboard → SQL Editor
--- ============================================================================
+-- ============================================
+-- TABLA: products
+-- Catálogo de productos base
+-- ============================================
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-
--- ════════════════════════════════════════════════════════════════════════════
--- TABLES
--- ════════════════════════════════════════════════════════════════════════════
-
--- Products (base catalog)
 CREATE TABLE products (
-  id             UUID           PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name           TEXT           NOT NULL,
-  description    TEXT,
-  base_price     NUMERIC(10,2) NOT NULL DEFAULT 0,
-  is_active      BOOLEAN        DEFAULT true,
-  images         TEXT[]         DEFAULT '{}',
-  created_at     TIMESTAMPTZ    DEFAULT now(),
-  updated_at     TIMESTAMPTZ    DEFAULT now()
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    sku VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('ropa_superior', 'ropa_interior', 'accesorios', 'hogar')),
+    base_image TEXT,
+    has_sizes BOOLEAN DEFAULT true,
+    available_sizes TEXT[] DEFAULT '{}',
+    available_colors TEXT[] DEFAULT '{}',
+    available_materials TEXT[] DEFAULT '{}',
+    has_styles BOOLEAN DEFAULT false,
+    available_styles TEXT[] DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- Inventory (variant-level stock)
-CREATE TABLE inventory (
-  id                 UUID           PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id         UUID           REFERENCES products(id) ON DELETE CASCADE,
-  style              TEXT,
-  material           TEXT,
-  design_type        TEXT,
-  color              TEXT,
-  size               TEXT,
-  quantity_available  INT            DEFAULT 0,
-  is_visible         BOOLEAN        DEFAULT true,
-  created_at         TIMESTAMPTZ    DEFAULT now(),
-  updated_at         TIMESTAMPTZ    DEFAULT now()
-);
-
--- Pricing rules (combination-based pricing)
-CREATE TABLE pricing (
-  id           UUID           PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id   UUID           REFERENCES products(id) ON DELETE CASCADE,
-  style        TEXT,
-  material     TEXT,
-  design_type  TEXT,
-  price        NUMERIC(10,2) NOT NULL,
-  created_at   TIMESTAMPTZ    DEFAULT now()
-);
-
--- Orders
-CREATE TABLE orders (
-  id            UUID           PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_code    TEXT           UNIQUE,
-  customer_info JSONB          NOT NULL,
-  status        TEXT           DEFAULT 'pending',  -- pending | processing | shipped | completed | cancelled
-  total_amount  NUMERIC(10,2) NOT NULL DEFAULT 0,
-  created_at    TIMESTAMPTZ    DEFAULT now(),
-  updated_at    TIMESTAMPTZ    DEFAULT now()
-);
-
--- Order items
-CREATE TABLE order_items (
-  id              UUID           PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_id        UUID           REFERENCES orders(id) ON DELETE CASCADE,
-  product_id      UUID           REFERENCES products(id),
-  quantity        INT            NOT NULL,
-  unit_price      NUMERIC(10,2) NOT NULL,
-  subtotal        NUMERIC(10,2) NOT NULL,
-  design_details  JSONB,
-  created_at      TIMESTAMPTZ    DEFAULT now()
-);
-
-
--- ════════════════════════════════════════════════════════════════════════════
--- FUNCTIONS & TRIGGERS
--- ════════════════════════════════════════════════════════════════════════════
-
--- ── update_updated_at() ────────────────────────────────────────────────────
--- Generic trigger function to auto-set updated_at on UPDATE
-CREATE OR REPLACE FUNCTION update_updated_at()
+-- Trigger para updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
+    new.updated_at = now();
+    RETURN new;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_products_updated_at
-  BEFORE UPDATE ON products
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_products_updated_at 
+BEFORE UPDATE ON products 
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER trg_inventory_updated_at
-  BEFORE UPDATE ON inventory
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- ============================================
+-- TABLA: product_pricing
+-- Precios por combinación de producto, estilo, material, tipo de diseño y rango de cantidad
+-- ============================================
 
-CREATE TRIGGER trg_orders_updated_at
-  BEFORE UPDATE ON orders
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TABLE product_pricing (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    style_name VARCHAR(100) NOT NULL DEFAULT 'default',
+    design_type VARCHAR(20) NOT NULL CHECK (design_type IN ('sin_diseño', 'normal', 'dual')),
+    material VARCHAR(20) NOT NULL CHECK (material IN ('llano', 'dtf', 'bordado', 'sublimado')),
+    min_qty INTEGER NOT NULL CHECK (min_qty > 0),
+    max_qty INTEGER NOT NULL CHECK (max_qty >= min_qty),
+    price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    
+    UNIQUE(product_id, style_name, material, design_type, min_qty)
+);
 
+-- Función para evitar rangos solapados
+CREATE OR REPLACE FUNCTION check_pricing_overlap()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM product_pricing
+        WHERE product_id = new.product_id
+          AND style_name = new.style_name
+          AND material = new.material
+          AND design_type = new.design_type
+          AND id != COALESCE(new.id, '00000000-0000-0000-0000-000000000000'::uuid)
+          AND int4range(min_qty, max_qty, '[]') && int4range(new.min_qty, new.max_qty, '[]')
+    ) THEN
+        RAISE EXCEPTION 'Rango de cantidad solapado para esta combinación';
+    END IF;
+    RETURN new;
+END;
+$$ LANGUAGE plpgsql;
 
--- ── generate_order_code() ──────────────────────────────────────────────────
--- Produces ORD-YYYY-NNNN before INSERT on orders
+CREATE TRIGGER prevent_pricing_overlap
+    BEFORE INSERT OR UPDATE ON product_pricing
+    FOR EACH ROW EXECUTE FUNCTION check_pricing_overlap();
+
+-- ============================================
+-- TABLA: inventory
+-- Stock por combinación de producto, color y talla
+-- ============================================
+
+CREATE TABLE inventory (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    color VARCHAR(100) NOT NULL,
+    size VARCHAR(10),
+    quantity_available INTEGER DEFAULT 0,
+    is_visible BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- ============================================
+-- TABLA: orders
+-- Órdenes de compra
+-- ============================================
+
+CREATE TABLE orders (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    order_code VARCHAR(50) UNIQUE NOT NULL,
+    customer_name VARCHAR(255) NOT NULL,
+    customer_phone VARCHAR(20) NOT NULL,
+    customer_email VARCHAR(255) NOT NULL,
+    customer_id_card VARCHAR(20) NOT NULL,
+    data_consent BOOLEAN DEFAULT false,
+    consent_timestamp TIMESTAMP WITH TIME ZONE,
+    subtotal DECIMAL(10,2) NOT NULL,
+    tax DECIMAL(10,2) DEFAULT 0,
+    total DECIMAL(10,2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'en_proceso', 'completado', 'cancelado')),
+    payment_status VARCHAR(50) DEFAULT 'pendiente' CHECK (payment_status IN ('pendiente', 'pagado', 'reembolsado')),
+    delivery_method VARCHAR(50) DEFAULT 'retiro_tienda' CHECK (delivery_method IN ('retiro_tienda', 'envio_domicilio')),
+    notas TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TRIGGER update_orders_updated_at 
+BEFORE UPDATE ON orders 
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Función para generar código de orden
 CREATE OR REPLACE FUNCTION generate_order_code()
 RETURNS TRIGGER AS $$
 DECLARE
-  year_str TEXT;
-  seq_num  INT;
+    year TEXT;
+    sequence_num INTEGER;
+    new_code TEXT;
 BEGIN
-  year_str := to_char(now(), 'YYYY');
-
-  SELECT count(*) + 1 INTO seq_num
-    FROM orders
-   WHERE to_char(created_at, 'YYYY') = year_str;
-
-  NEW.order_code := 'ORD-' || year_str || '-' || lpad(seq_num::text, 4, '0');
-  RETURN NEW;
+    year := to_char(now(), 'YYYY');
+    SELECT count(*) + 1 INTO sequence_num 
+    FROM orders 
+    WHERE extract(year FROM created_at) = extract(year FROM now());
+    new_code := 'ORD-' || year || '-' || lpad(sequence_num::text, 4, '0');
+    new.order_code := new_code;
+    RETURN new;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_set_order_code
-  BEFORE INSERT ON orders
-  FOR EACH ROW EXECUTE FUNCTION generate_order_code();
+CREATE TRIGGER set_order_code 
+BEFORE INSERT ON orders 
+FOR EACH ROW EXECUTE FUNCTION generate_order_code();
 
+-- ============================================
+-- TABLA: order_items
+-- Items de cada orden
+-- ============================================
 
--- ── get_product_price() RPC ────────────────────────────────────────────────
--- Returns the most specific matching pricing rule for a given combination.
--- Falls back to nothing if no rule matches (app handles fallback to base_price).
+CREATE TABLE order_items (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id),
+    pricing_id UUID REFERENCES product_pricing(id),
+    product_name VARCHAR(255) NOT NULL,
+    style_name VARCHAR(100) NOT NULL,
+    selected_color VARCHAR(100) NOT NULL,
+    selected_size VARCHAR(10),
+    material VARCHAR(20) NOT NULL,
+    design_type VARCHAR(20) NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(10,2) NOT NULL,
+    design_main_url TEXT,
+    design_secondary_url TEXT,
+    placement_instructions TEXT NOT NULL,
+    add_initial BOOLEAN DEFAULT false,
+    initial_letter VARCHAR(5),
+    initial_price DECIMAL(10,2) DEFAULT 0.50,
+    item_total DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- ============================================
+-- TABLA: designs
+-- Galería de diseños de clientes
+-- ============================================
+
+CREATE TABLE designs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    customer_email VARCHAR(255) NOT NULL,
+    customer_id_card VARCHAR(20) NOT NULL,
+    design_name VARCHAR(255),
+    design_image_url TEXT NOT NULL,
+    thumbnail_url TEXT,
+    design_role VARCHAR(20) CHECK (design_role IN ('principal', 'secundario')),
+    usage_count INTEGER DEFAULT 0,
+    last_used TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT true,
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- ============================================
+-- TABLA: activity_logs
+-- Historial de acciones
+-- ============================================
+
+CREATE TABLE activity_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    action_type VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) DEFAULT 'info' CHECK (severity IN ('info', 'warning', 'error', 'critical')),
+    actor_type VARCHAR(20) NOT NULL CHECK (actor_type IN ('customer', 'admin', 'system')),
+    actor_identifier VARCHAR(255) NOT NULL,
+    ip_address INET,
+    resource_type VARCHAR(50) NOT NULL,
+    resource_id UUID,
+    details JSONB DEFAULT '{}',
+    metadata JSONB DEFAULT '{}',
+    related_entities JSONB DEFAULT '[]'
+);
+
+-- Índices para logs
+CREATE INDEX idx_activity_logs_timestamp ON activity_logs(timestamp DESC);
+CREATE INDEX idx_activity_logs_action_type ON activity_logs(action_type, timestamp DESC);
+CREATE INDEX idx_activity_logs_actor ON activity_logs(actor_identifier);
+CREATE INDEX idx_activity_logs_resource ON activity_logs(resource_type, resource_id);
+
+-- ============================================
+-- FUNCIONES RPC
+-- ============================================
+
+-- Función para obtener precio según cantidad
 CREATE OR REPLACE FUNCTION get_product_price(
-  p_product_id  UUID,
-  p_style_name  TEXT,
-  p_material    TEXT,
-  p_design_type TEXT,
-  p_quantity    INT
+    p_product_id UUID,
+    p_style_name VARCHAR,
+    p_material VARCHAR,
+    p_design_type VARCHAR,
+    p_quantity INTEGER
 )
-RETURNS TABLE (pricing_id UUID, unit_price NUMERIC) AS $$
+RETURNS TABLE (
+    pricing_id UUID,
+    price DECIMAL
+) AS $$
 BEGIN
-  RETURN QUERY
-  SELECT p.id, p.price
-    FROM pricing p
-   WHERE p.product_id = p_product_id
-     AND (p.style       IS NULL OR p.style       = p_style_name)
-     AND (p.material    IS NULL OR p.material    = p_material)
-     AND (p.design_type IS NULL OR p.design_type = p_design_type)
-   ORDER BY
-     -- More specific matches first
-     (CASE WHEN p.style       IS NOT NULL THEN 1 ELSE 0 END +
-      CASE WHEN p.material    IS NOT NULL THEN 1 ELSE 0 END +
-      CASE WHEN p.design_type IS NOT NULL THEN 1 ELSE 0 END) DESC
-   LIMIT 1;
+    RETURN QUERY
+    SELECT 
+        pp.id,
+        pp.price
+    FROM product_pricing pp
+    WHERE pp.product_id = p_product_id
+      AND pp.style_name = p_style_name
+      AND pp.material = p_material
+      AND pp.design_type = p_design_type
+      AND p_quantity BETWEEN pp.min_qty AND pp.max_qty
+    LIMIT 1;
 END;
 $$ LANGUAGE plpgsql;
 
-
--- ════════════════════════════════════════════════════════════════════════════
+-- ============================================
 -- ROW LEVEL SECURITY (RLS)
--- ════════════════════════════════════════════════════════════════════════════
+-- ============================================
 
-ALTER TABLE products    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pricing     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE orders      ENABLE ROW LEVEL SECURITY;
+-- Habilitar RLS en todas las tablas
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_pricing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE designs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 
--- Products: public read, admin write
-CREATE POLICY "Public read products"  ON products  FOR SELECT USING (true);
-CREATE POLICY "Admin write products"  ON products  FOR ALL    USING (auth.role() = 'service_role');
+-- Forzar RLS
+ALTER TABLE products FORCE ROW LEVEL SECURITY;
+ALTER TABLE product_pricing FORCE ROW LEVEL SECURITY;
+ALTER TABLE inventory FORCE ROW LEVEL SECURITY;
+ALTER TABLE orders FORCE ROW LEVEL SECURITY;
+ALTER TABLE designs FORCE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs FORCE ROW LEVEL SECURITY;
 
--- Inventory: public read, admin write
-CREATE POLICY "Public read inventory" ON inventory FOR SELECT USING (true);
-CREATE POLICY "Admin write inventory" ON inventory FOR ALL    USING (auth.role() = 'service_role');
+-- Políticas
+CREATE POLICY "Public read active products" 
+ON products FOR SELECT 
+USING (is_active = true);
 
--- Pricing: public read, admin write
-CREATE POLICY "Public read pricing"   ON pricing   FOR SELECT USING (true);
-CREATE POLICY "Admin write pricing"   ON pricing   FOR ALL    USING (auth.role() = 'service_role');
+CREATE POLICY "No direct access" 
+ON product_pricing FOR SELECT 
+USING (false);
 
--- Orders: admin full access + public insert (checkout)
-CREATE POLICY "Admin all orders"      ON orders      FOR ALL    USING (auth.role() = 'service_role');
-CREATE POLICY "Public insert orders"  ON orders      FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public visible inventory" 
+ON inventory FOR SELECT 
+USING (is_visible = true);
 
--- Order items: admin full access + public insert
-CREATE POLICY "Admin all order_items"     ON order_items FOR ALL    USING (auth.role() = 'service_role');
-CREATE POLICY "Public insert order_items" ON order_items FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users own orders"
+ON orders FOR ALL 
+USING (customer_email = auth.jwt() ->> 'email');
 
+CREATE POLICY "Admin full access pricing" 
+ON product_pricing FOR ALL 
+USING (auth.role() = 'admin');
 
--- ════════════════════════════════════════════════════════════════════════════
--- STORAGE BUCKET: designs
--- ════════════════════════════════════════════════════════════════════════════
-
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('designs', 'designs', true)
-ON CONFLICT (id) DO NOTHING;
-
--- Public read on the designs bucket
-CREATE POLICY "Public read designs" ON storage.objects
-  FOR SELECT USING (bucket_id = 'designs');
-
--- Write restricted to service_role (API routes use signed URLs)
-CREATE POLICY "Admin write designs" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id = 'designs' AND auth.role() = 'service_role');
-
-
--- ════════════════════════════════════════════════════════════════════════════
--- REALTIME
--- ════════════════════════════════════════════════════════════════════════════
-
-ALTER PUBLICATION supabase_realtime ADD TABLE products;
-ALTER PUBLICATION supabase_realtime ADD TABLE inventory;
-ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+CREATE POLICY "Admin only logs" 
+ON activity_logs FOR ALL 
+USING (auth.role() = 'admin');
