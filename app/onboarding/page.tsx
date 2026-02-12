@@ -1,6 +1,8 @@
 
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useProducts } from "@/hooks/useProducts"
 import { ProductCard } from "@/components/onboarding/ProductCard"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner" // Need to create shared

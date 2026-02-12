@@ -1,6 +1,8 @@
 
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useCart } from "@/hooks/useCart"
 import { CustomerForm } from "@/components/onboarding/CustomerForm"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
