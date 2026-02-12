@@ -12,15 +12,25 @@ export function useInventory(productId?: string) {
 
     const fetchInventory = useCallback(async () => {
         setLoading(true)
-        let query = supabase
-            .from('inventory')
-            .select('*, products(name, base_image)')
-            .eq('is_visible', true)
-            .order('created_at', { ascending: false })
+        // Conditional query:
+        // If we have productId (Detail/Configurator view), we DON'T need the join
+        // If we are listing all (Dashboard), we NEED the join to know product names
+        let query = supabase.from('inventory').select('*')
 
         if (productId) {
             query = query.eq('product_id', productId)
+        } else {
+            // Dashboard view: join products
+            query = supabase
+                .from('inventory')
+                .select('*, products(name, base_image)')
         }
+
+        // Apply common filters and sort
+        query = query
+            .eq('is_visible', true)
+            // User confirmed table has updated_at, not created_at
+            .order('updated_at', { ascending: false })
 
         const { data, error: err } = await query
 

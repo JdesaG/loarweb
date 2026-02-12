@@ -11,7 +11,7 @@ export async function GET() {
         const { data: items, error: invError } = await db
             .from('inventory')
             .select('*')
-            .order('created_at', { ascending: false })
+            .order('updated_at', { ascending: false })
 
         if (invError) throw invError
 

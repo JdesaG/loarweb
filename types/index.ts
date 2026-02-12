@@ -40,7 +40,7 @@ export interface InventoryItem {
     size: string | null
     quantity_available: number
     is_visible: boolean
-    created_at: string
+    updated_at: string
     // Joined data (optional)
     products?: {
         name: string
