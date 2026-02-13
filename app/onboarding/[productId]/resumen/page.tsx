@@ -1,7 +1,7 @@
 'use client'
 
 import { use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useConfiguratorStore } from '@/stores/configuratorStore'
 import { useCartStore } from '@/stores/cartStore'
 import { PriceSummary } from '@/components/onboarding/PriceSummary'
@@ -15,6 +15,8 @@ import { toast } from 'sonner'
 export default function ResumenPage({ params }: { params: Promise<{ productId: string }> }) {
     use(params)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const executionId = searchParams.get('executionId')
     const store = useConfiguratorStore()
     const addItem = useCartStore((s) => s.addItem)
 
@@ -24,7 +26,7 @@ export default function ResumenPage({ params }: { params: Promise<{ productId: s
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <EmptyState title="No hay producto seleccionado" description="Vuelve al catálogo para elegir un producto." />
-                <Link href="/onboarding" className="mt-4">
+                <Link href={`/onboarding${executionId ? `?executionId=${executionId}` : ''}`} className="mt-4">
                     <Button>Ir al catálogo</Button>
                 </Link>
             </div>
@@ -46,7 +48,7 @@ export default function ResumenPage({ params }: { params: Promise<{ productId: s
         })
         toast.success('Agregado al carrito')
         store.reset()
-        router.push('/onboarding')
+        router.push(`/onboarding${executionId ? `?executionId=${executionId}` : ''}`)
     }
 
     const handleBuyNow = () => {
@@ -63,14 +65,14 @@ export default function ResumenPage({ params }: { params: Promise<{ productId: s
             initialLetter: store.initialLetter || undefined,
         })
         store.reset()
-        router.push('/onboarding/checkout')
+        router.push(`/onboarding/checkout${executionId ? `?executionId=${executionId}` : ''}`)
     }
 
     return (
         <div className="min-h-screen bg-white">
             <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white/80 backdrop-blur-md">
                 <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
-                    <Link href={`/onboarding/${product.id}`}>
+                    <Link href={`/onboarding/${product.id}${executionId ? `?executionId=${executionId}` : ''}`}>
                         <Button variant="ghost" size="icon">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>

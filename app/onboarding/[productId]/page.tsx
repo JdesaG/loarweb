@@ -9,11 +9,14 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import type { Product } from '@/types'
 
 export default function ConfiguratorPage({ params }: { params: Promise<{ productId: string }> }) {
     const { productId } = use(params)
+    const searchParams = useSearchParams()
+    const executionId = searchParams.get('executionId')
     const supabase = useSupabase()
     const reset = useConfiguratorStore((s) => s.reset)
     const [product, setProduct] = useState<Product | null>(null)
@@ -41,7 +44,7 @@ export default function ConfiguratorPage({ params }: { params: Promise<{ product
             {/* Header */}
             <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white/80 backdrop-blur-md">
                 <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-4">
-                    <Link href="/onboarding">
+                    <Link href={`/onboarding${executionId ? `?executionId=${executionId}` : ''}`}>
                         <Button variant="ghost" size="icon">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>

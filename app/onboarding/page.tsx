@@ -8,10 +8,13 @@ import { ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 import { useCart } from '@/hooks/useCart'
 import { Badge } from '@/components/ui/badge'
+import { useSearchParams } from 'next/navigation'
 
 export default function OnboardingPage() {
     const { products, loading, error } = useProducts()
     const { itemCount } = useCart()
+    const searchParams = useSearchParams()
+    const executionId = searchParams.get('executionId')
 
     return (
         <div className="min-h-screen bg-white">
@@ -21,7 +24,7 @@ export default function OnboardingPage() {
                     <Link href="/" className="text-2xl font-extrabold tracking-tight text-neutral-900">
                         LOAR
                     </Link>
-                    <Link href="/onboarding/checkout" className="relative">
+                    <Link href={`/onboarding/checkout${executionId ? `?executionId=${executionId}` : ''}`} className="relative">
                         <ShoppingBag className="h-6 w-6 text-neutral-700" />
                         {itemCount > 0 && (
                             <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-[10px]">
@@ -51,7 +54,7 @@ export default function OnboardingPage() {
                 ) : (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                         {products.map((product) => (
-                            <ProductCard key={product.id} product={product} />
+                            <ProductCard key={product.id} product={product} executionId={executionId} />
                         ))}
                     </div>
                 )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSupabase } from '@/hooks/supabase'
 import { useConfiguratorStore } from '@/stores/configuratorStore'
 import { useInventory } from '@/hooks/useInventory'
@@ -26,6 +26,8 @@ const TOTAL_STEPS = 2
 
 export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const executionId = searchParams.get('executionId')
     const supabase = useSupabase()
     const store = useConfiguratorStore()
     const { inventory, loading: invLoading } = useInventory(product.id)
@@ -184,7 +186,7 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
     }
 
     const handleFinish = () => {
-        router.push(`/onboarding/${product.id}/resumen`)
+        router.push(`/onboarding/${product.id}/resumen${executionId ? `?executionId=${executionId}` : ''}`)
     }
 
     return (

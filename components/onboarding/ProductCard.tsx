@@ -6,11 +6,12 @@ import type { Product } from '@/types'
 
 interface ProductCardProps {
     product: Product
+    executionId?: string | null
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, executionId }: ProductCardProps) {
     return (
-        <Link href={`/onboarding/${product.id}`} className="group block">
+        <Link href={`/onboarding/${product.id}${executionId ? `?executionId=${executionId}` : ''}`} className="group block">
             <div className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-neutral-200/50">
                 {product.base_image ? (
                     <Image
