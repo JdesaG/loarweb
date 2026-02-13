@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCart } from '@/hooks/useCart'
@@ -18,7 +18,17 @@ import { toast } from 'sonner'
 import type { CustomerInfoInput } from '@/schemas/order'
 
 export default function CheckoutPage() {
+    return (
+        <Suspense>
+            <CheckoutContent />
+        </Suspense>
+    )
+}
+
+function CheckoutContent() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const executionId = searchParams.get('executionId')
     const { items, total, clearCart, removeItem } = useCart()
     const [submitting, setSubmitting] = useState(false)
     const [orderCode, setOrderCode] = useState<string | null>(null)
@@ -32,62 +42,83 @@ export default function CheckoutPage() {
         resolver: zodResolver(customerInfoSchema),
     })
 
+    const closeWebView = () => {
+        window.location.href = "https://wa.me/13239183195";
+    };
+
     const onSubmit = async (customer: CustomerInfoInput) => {
         if (!termsAccepted) {
             toast.error('Debes aceptar los términos y condiciones para continuar.')
             return
         }
 
+
+
         setSubmitting(true)
         try {
             const subtotal = total
             const tax = 0
             const grandTotal = subtotal + tax
-
-            const res = await fetch('/api/create-order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    customer: {
-                        ...customer,
-                        data_consent: termsAccepted,
-                    },
-                    items: items.map((item) => ({
-                        product_id: item.product.id,
-                        product_name: item.product.name,
-                        style_name: item.styleName || null,
-                        selected_color: item.selectedColor || null,
-                        selected_size: item.selectedSize || null,
-                        material: item.material || null,
-                        design_type: item.designType || null,
-                        quantity: item.quantity,
-                        unit_price: item.unitPrice,
-                        design_main_url: item.designMainUrl || null,
-                        design_secondary_url: item.designSecondaryUrl || null,
-                        placement_instructions: item.placementInstructions || null,
-                        add_initial: item.addInitial ?? false,
-                        initial_letter: item.initialLetter || null,
-                        initial_price: item.initialPrice ?? 0,
-                        item_total:
-                            item.unitPrice * item.quantity +
-                            (item.addInitial && item.initialPrice
-                                ? item.initialPrice * item.quantity
-                                : 0),
-                    })),
-                    subtotal,
-                    tax,
-                    total: grandTotal,
-                }),
-            })
-
-            if (!res.ok) {
-                const data = await res.json()
-                throw new Error(data.error || 'Error al crear orden')
+            
+            
+            if (executionId) {
+                await fetch('/api/jelou-callback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ executionId }),
+                })
             }
 
-            const data = await res.json()
-            clearCart()
-            setOrderCode(data.orderCode)
+
+            closeWebView();
+
+            
+            // const res = await fetch('/api/create-order', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({
+            //         customer: {
+            //             ...customer,
+            //             data_consent: termsAccepted,
+            //         },
+            //         items: items.map((item) => ({
+            //             product_id: item.product.id,
+            //             product_name: item.product.name,
+            //             style_name: item.styleName || null,
+            //             selected_color: item.selectedColor || null,
+            //             selected_size: item.selectedSize || null,
+            //             material: item.material || null,
+            //             design_type: item.designType || null,
+            //             quantity: item.quantity,
+            //             unit_price: item.unitPrice,
+            //             design_main_url: item.designMainUrl || null,
+            //             design_secondary_url: item.designSecondaryUrl || null,
+            //             placement_instructions: item.placementInstructions || null,
+            //             add_initial: item.addInitial ?? false,
+            //             initial_letter: item.initialLetter || null,
+            //             initial_price: item.initialPrice ?? 0,
+            //             item_total:
+            //                 item.unitPrice * item.quantity +
+            //                 (item.addInitial && item.initialPrice
+            //                     ? item.initialPrice * item.quantity
+            //                     : 0),
+            //         })),
+            //         subtotal,
+            //         tax,
+            //         total: grandTotal,
+            //     }),
+            // })
+            
+            // if (!res.ok) {
+            //     const data = await res.json()
+            //     throw new Error(data.error || 'Error al crear orden')
+            // }
+
+            // const data = await res.json()
+
+
+            // clearCart()
+            // setOrderCode(data.orderCode)
             toast.success('¡Pedido creado!')
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Error inesperado')
@@ -107,7 +138,7 @@ export default function CheckoutPage() {
                     <p className="text-sm text-neutral-500">
                         Te contactaremos para coordinar el pago y envío.
                     </p>
-                    <Link href="/onboarding">
+                    <Link href={`/onboarding${executionId ? `?executionId=${executionId}` : ''}`}>
                         <Button variant="brand" size="lg" className="mt-4">
                             Volver al catálogo
                         </Button>
@@ -123,7 +154,7 @@ export default function CheckoutPage() {
             <div className="min-h-screen">
                 <header className="border-b border-neutral-100 bg-white">
                     <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
-                        <Link href="/onboarding">
+                        <Link href={`/onboarding${executionId ? `?executionId=${executionId}` : ''}`}>
                             <Button variant="ghost" size="icon">
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
@@ -137,7 +168,7 @@ export default function CheckoutPage() {
                     description="Agrega productos desde el catálogo."
                     icon={<ShoppingCart className="h-8 w-8 text-neutral-400" />}
                 >
-                    <Link href="/onboarding">
+                    <Link href={`/onboarding${executionId ? `?executionId=${executionId}` : ''}`}>
                         <Button>Ver catálogo</Button>
                     </Link>
                 </EmptyState>
@@ -150,7 +181,7 @@ export default function CheckoutPage() {
         <div className="min-h-screen bg-white">
             <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white/80 backdrop-blur-md">
                 <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
-                    <Link href="/onboarding">
+                    <Link href={`/onboarding${executionId ? `?executionId=${executionId}` : ''}`}>
                         <Button variant="ghost" size="icon">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
