@@ -116,7 +116,11 @@ function CheckoutContent() {
                         success: true,
                         //TO-DO: Jandony tienes que enviar la metadata que quieres luego mostrar en el mensaje de confirmación en WhatsApp.
                         // No mandes todito, por el momento yo voy a enviar el total nomas,
-                        body: orderPayload.total, // Aquí puedes agregar más campos si quieres mostrar más información en WhatsApp
+                        body:
+                        {
+                            total: orderPayload.total,
+                             // Aquí puedes agregar más campos si quieres mostrar más información en WhatsApp
+                        }
                     }),
                 })
 
