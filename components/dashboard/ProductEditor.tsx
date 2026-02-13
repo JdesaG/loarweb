@@ -43,8 +43,8 @@ export function ProductEditor({ product, open, onOpenChange, onSave }: ProductEd
         setSaving(true)
         await onSave(product.id, {
             name,
-            category: category || null,
-            sku: sku || null,
+            category: category || undefined,
+            sku: sku || undefined,
             is_active: isActive,
         })
         setSaving(false)
