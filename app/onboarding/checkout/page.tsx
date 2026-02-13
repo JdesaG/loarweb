@@ -43,7 +43,8 @@ function CheckoutContent() {
     })
 
     const closeWebView = () => {
-        window.location.href = "https://wa.me/13239183195";
+        const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '593996678900'
+        window.location.href = `https://wa.me/${waNumber}`
     };
 
     const onSubmit = async (customer: CustomerInfoInput) => {
@@ -59,67 +60,69 @@ function CheckoutContent() {
             const subtotal = total
             const tax = 0
             const grandTotal = subtotal + tax
-            
-            
-            if (executionId) {
-                await fetch('/api/jelou-callback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ executionId }),
-                })
+
+            const orderPayload = {
+                customer: {
+                    ...customer,
+                    data_consent: termsAccepted,
+                },
+                items: items.map((item) => ({
+                    product_id: item.product.id,
+                    product_name: item.product.name,
+                    style_name: item.styleName || null,
+                    selected_color: item.selectedColor || null,
+                    selected_size: item.selectedSize || null,
+                    material: item.material || null,
+                    design_type: item.designType || null,
+                    quantity: item.quantity,
+                    unit_price: item.unitPrice,
+                    design_main_url: item.designMainUrl || null,
+                    design_secondary_url: item.designSecondaryUrl || null,
+                    placement_instructions: item.placementInstructions || null,
+                    add_initial: item.addInitial ?? false,
+                    initial_letter: item.initialLetter || null,
+                    initial_price: item.initialPrice ?? 0,
+                    item_total:
+                        item.unitPrice * item.quantity +
+                        (item.addInitial && item.initialPrice
+                            ? item.initialPrice * item.quantity
+                            : 0),
+                })),
+                total: grandTotal,
             }
 
-
-            closeWebView();
-
-            
             // const res = await fetch('/api/create-order', {
             //     method: 'POST',
             //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({
-            //         customer: {
-            //             ...customer,
-            //             data_consent: termsAccepted,
-            //         },
-            //         items: items.map((item) => ({
-            //             product_id: item.product.id,
-            //             product_name: item.product.name,
-            //             style_name: item.styleName || null,
-            //             selected_color: item.selectedColor || null,
-            //             selected_size: item.selectedSize || null,
-            //             material: item.material || null,
-            //             design_type: item.designType || null,
-            //             quantity: item.quantity,
-            //             unit_price: item.unitPrice,
-            //             design_main_url: item.designMainUrl || null,
-            //             design_secondary_url: item.designSecondaryUrl || null,
-            //             placement_instructions: item.placementInstructions || null,
-            //             add_initial: item.addInitial ?? false,
-            //             initial_letter: item.initialLetter || null,
-            //             initial_price: item.initialPrice ?? 0,
-            //             item_total:
-            //                 item.unitPrice * item.quantity +
-            //                 (item.addInitial && item.initialPrice
-            //                     ? item.initialPrice * item.quantity
-            //                     : 0),
-            //         })),
-            //         subtotal,
-            //         tax,
-            //         total: grandTotal,
-            //     }),
+            //     body: JSON.stringify(orderPayload),
             // })
-            
+            //
             // if (!res.ok) {
             //     const data = await res.json()
             //     throw new Error(data.error || 'Error al crear orden')
             // }
-
+            //
             // const data = await res.json()
-
-
             // clearCart()
             // setOrderCode(data.orderCode)
-            toast.success('¡Pedido creado!')
+
+            //TO-DO solo ejecutar esta sección si el pedido creado fue exitoso es decir el POST de las lineas de arriba
+            if (executionId) {
+                await fetch('/api/jelou-callback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        executionId,
+                        success: true,
+                        //TO-DO: Jandony tienes que enviar la metadata que quieres luego mostrar en el mensaje de confirmación en WhatsApp.
+                        // No mandes todito, por el momento yo voy a enviar el total nomas,
+                        data: orderPayload.total,
+                    }),
+                })
+            }
+
+            closeWebView()
+            toast.success('¡Pedido enviado!')
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Error inesperado')
         }
