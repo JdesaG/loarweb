@@ -1,6 +1,6 @@
 'use client'
 
-import { use } from 'react'
+import { Suspense, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useConfiguratorStore } from '@/stores/configuratorStore'
 import { useCartStore } from '@/stores/cartStore'
@@ -13,6 +13,14 @@ import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ResumenPage({ params }: { params: Promise<{ productId: string }> }) {
+    return (
+        <Suspense>
+            <ResumenContent params={params} />
+        </Suspense>
+    )
+}
+
+function ResumenContent({ params }: { params: Promise<{ productId: string }> }) {
     use(params)
     const router = useRouter()
     const searchParams = useSearchParams()

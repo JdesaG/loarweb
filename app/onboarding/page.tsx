@@ -9,8 +9,17 @@ import Link from 'next/link'
 import { useCart } from '@/hooks/useCart'
 import { Badge } from '@/components/ui/badge'
 import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
 export default function OnboardingPage() {
+    return (
+        <Suspense>
+            <OnboardingContent />
+        </Suspense>
+    )
+}
+
+function OnboardingContent() {
     const { products, loading, error } = useProducts()
     const { itemCount } = useCart()
     const searchParams = useSearchParams()

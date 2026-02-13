@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { Suspense, use, useEffect, useState } from 'react'
 import { useSupabase } from '@/hooks/supabase'
 import { useConfiguratorStore } from '@/stores/configuratorStore'
 import { ConfiguratorWizard } from '@/components/onboarding/ConfiguratorWizard'
@@ -14,6 +14,14 @@ import { ArrowLeft } from 'lucide-react'
 import type { Product } from '@/types'
 
 export default function ConfiguratorPage({ params }: { params: Promise<{ productId: string }> }) {
+    return (
+        <Suspense>
+            <ConfiguratorContent params={params} />
+        </Suspense>
+    )
+}
+
+function ConfiguratorContent({ params }: { params: Promise<{ productId: string }> }) {
     const { productId } = use(params)
     const searchParams = useSearchParams()
     const executionId = searchParams.get('executionId')
