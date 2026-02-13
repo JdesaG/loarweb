@@ -116,21 +116,14 @@ function CheckoutContent() {
                         success: true,
                         //TO-DO: Jandony tienes que enviar la metadata que quieres luego mostrar en el mensaje de confirmación en WhatsApp.
                         // No mandes todito, por el momento yo voy a enviar el total nomas,
-                        data: orderPayload.total,
                     }),
                 })
 
-                const callbackData = await callbackRes.json()
-
                 if (callbackRes.ok) {
-                    toast.success(`Callback: ${JSON.stringify(callbackData)}`)
                     closeWebView()
-                } else {
-                    toast.error(`Callback error: ${callbackData.error || callbackRes.statusText}`)
                 }
             }
 
-            toast.success('¡Pedido enviado!')
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Error inesperado')
         }
