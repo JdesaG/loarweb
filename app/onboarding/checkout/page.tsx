@@ -108,7 +108,7 @@ function CheckoutContent() {
 
             //TO-DO solo ejecutar esta sección si el pedido creado fue exitoso es decir el POST de las lineas de arriba
             if (executionId) {
-                await fetch('/api/jelou-callback', {
+                const callbackRes = await fetch('/api/jelou-callback', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -119,9 +119,17 @@ function CheckoutContent() {
                         data: orderPayload.total,
                     }),
                 })
+
+                const callbackData = await callbackRes.json()
+
+                if (callbackRes.ok) {
+                    toast.success(`Callback: ${JSON.stringify(callbackData)}`)
+                    closeWebView()
+                } else {
+                    toast.error(`Callback error: ${callbackData.error || callbackRes.statusText}`)
+                }
             }
 
-            closeWebView()
             toast.success('¡Pedido enviado!')
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Error inesperado')
