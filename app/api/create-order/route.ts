@@ -18,7 +18,6 @@ export async function POST(request: Request) {
                 customer_email: input.customer.customer_email || null,
                 customer_id_card: input.customer.customer_id_card || null,
                 data_consent: input.customer.data_consent ?? false,
-                consent_timestamp: input.customer.data_consent ? new Date().toISOString() : null,
                 delivery_method: input.customer.delivery_method || null,
                 notas: input.customer.notas || null,
                 subtotal: input.subtotal,

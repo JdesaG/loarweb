@@ -88,25 +88,27 @@ function CheckoutContent() {
                             ? item.initialPrice * item.quantity
                             : 0),
                 })),
+                subtotal,
+                tax,
                 total: grandTotal,
             }
 
-            // const res = await fetch('/api/create-order', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(orderPayload),
-            // })
-            //
-            // if (!res.ok) {
-            //     const data = await res.json()
-            //     throw new Error(data.error || 'Error al crear orden')
-            // }
-            //
-            // const data = await res.json()
-            // clearCart()
-            // setOrderCode(data.orderCode)
+            const res = await fetch('/api/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderPayload),
+            })
 
-            //TO-DO solo ejecutar esta sección si el pedido creado fue exitoso es decir el POST de las lineas de arriba
+            if (!res.ok) {
+                const data = await res.json()
+                throw new Error(data.error || 'Error al crear orden')
+            }
+
+            const data = await res.json()
+            clearCart()
+            setOrderCode(data.orderCode)
+
+            // Notificar a Jelou con el número de orden
             if (executionId) {
                 const callbackRes = await fetch('/api/jelou-callback', {
                     method: 'POST',
@@ -114,12 +116,10 @@ function CheckoutContent() {
                     body: JSON.stringify({
                         executionId,
                         success: true,
-                        //TO-DO: Jandony tienes que enviar la metadata que quieres luego mostrar en el mensaje de confirmación en WhatsApp.
-                        // No mandes todito, por el momento yo voy a enviar el total nomas,
-                        body:
-                        {
+                        body: {
+                            order_code: data.orderCode,
+                            order_id: data.orderId,
                             total: orderPayload.total,
-                             // Aquí puedes agregar más campos si quieres mostrar más información en WhatsApp
                         }
                     }),
                 })

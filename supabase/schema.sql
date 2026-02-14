@@ -103,13 +103,15 @@ CREATE TABLE orders (
     customer_email VARCHAR(255) NOT NULL,
     customer_id_card VARCHAR(20) NOT NULL,
     data_consent BOOLEAN DEFAULT false,
-    consent_timestamp TIMESTAMP WITH TIME ZONE,
     subtotal DECIMAL(10,2) NOT NULL,
     tax DECIMAL(10,2) DEFAULT 0,
     total DECIMAL(10,2) NOT NULL,
-    status VARCHAR(50) DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'en_proceso', 'completado', 'cancelado')),
-    payment_status VARCHAR(50) DEFAULT 'pendiente' CHECK (payment_status IN ('pendiente', 'pagado', 'reembolsado')),
-    delivery_method VARCHAR(50) DEFAULT 'retiro_tienda' CHECK (delivery_method IN ('retiro_tienda', 'envio_domicilio')),
+    status VARCHAR(50) DEFAULT 'pendiente',
+    payment_status VARCHAR(50) DEFAULT 'pendiente',
+    delivery_method VARCHAR(50) DEFAULT 'retiro_tienda',
+    location_url TEXT,
+    payment_receipt_url TEXT,
+    payment_method VARCHAR(50),
     notas TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
@@ -152,7 +154,6 @@ CREATE TABLE order_items (
     product_id UUID REFERENCES products(id),
     pricing_id UUID REFERENCES product_pricing(id),
     product_name VARCHAR(255) NOT NULL,
-    style_name VARCHAR(100) NOT NULL,
     selected_color VARCHAR(100) NOT NULL,
     selected_size VARCHAR(10),
     material VARCHAR(20) NOT NULL,
@@ -161,31 +162,12 @@ CREATE TABLE order_items (
     unit_price DECIMAL(10,2) NOT NULL,
     design_main_url TEXT,
     design_secondary_url TEXT,
-    placement_instructions TEXT NOT NULL,
+    placement_instructions TEXT,
     add_initial BOOLEAN DEFAULT false,
     initial_letter VARCHAR(5),
     initial_price DECIMAL(10,2) DEFAULT 0.50,
     item_total DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- ============================================
--- TABLA: designs
--- Galería de diseños de clientes
--- ============================================
-
-CREATE TABLE designs (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    customer_email VARCHAR(255) NOT NULL,
-    customer_id_card VARCHAR(20) NOT NULL,
-    design_name VARCHAR(255),
-    design_image_url TEXT NOT NULL,
-    thumbnail_url TEXT,
-    design_role VARCHAR(20) CHECK (design_role IN ('principal', 'secundario')),
-    usage_count INTEGER DEFAULT 0,
-    last_used TIMESTAMP WITH TIME ZONE,
-    is_active BOOLEAN DEFAULT true,
-    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- ============================================
@@ -255,37 +237,82 @@ ALTER TABLE product_pricing ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE designs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 
--- Forzar RLS
+-- Forzar RLS en todas las tablas
 ALTER TABLE products FORCE ROW LEVEL SECURITY;
 ALTER TABLE product_pricing FORCE ROW LEVEL SECURITY;
 ALTER TABLE inventory FORCE ROW LEVEL SECURITY;
 ALTER TABLE orders FORCE ROW LEVEL SECURITY;
-ALTER TABLE designs FORCE ROW LEVEL SECURITY;
+ALTER TABLE order_items FORCE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs FORCE ROW LEVEL SECURITY;
 
--- Políticas
+-- ============================================
+-- POLÍTICAS RLS - PRODUCTS
+-- ============================================
+
 CREATE POLICY "Public read active products" 
 ON products FOR SELECT 
 USING (is_active = true);
+
+-- ============================================
+-- POLÍTICAS RLS - PRODUCT_PRICING
+-- ============================================
 
 CREATE POLICY "No direct access" 
 ON product_pricing FOR SELECT 
 USING (false);
 
+CREATE POLICY "Admin full access pricing" 
+ON product_pricing FOR ALL 
+USING (auth.role() = 'admin');
+
+-- ============================================
+-- POLÍTICAS RLS - INVENTORY
+-- ============================================
+
 CREATE POLICY "Public visible inventory" 
 ON inventory FOR SELECT 
 USING (is_visible = true);
 
+-- ============================================
+-- POLÍTICAS RLS - ORDERS
+-- ============================================
+
+-- Clientes ven sus propias órdenes (por email o teléfono)
 CREATE POLICY "Users own orders"
 ON orders FOR ALL 
-USING (customer_email = auth.jwt() ->> 'email');
+USING (customer_email = auth.jwt() ->> 'email' OR customer_phone = auth.jwt() ->> 'phone');
 
-CREATE POLICY "Admin full access pricing" 
-ON product_pricing FOR ALL 
+-- Admin tiene acceso total
+CREATE POLICY "Admin full access orders"
+ON orders FOR ALL 
 USING (auth.role() = 'admin');
+
+-- ============================================
+-- POLÍTICAS RLS - ORDER_ITEMS
+-- ============================================
+
+-- Acceso mediante la orden relacionada
+CREATE POLICY "Items accessible by order"
+ON order_items FOR ALL
+USING (
+    EXISTS (
+        SELECT 1 FROM orders 
+        WHERE orders.id = order_items.order_id 
+        AND (orders.customer_email = auth.jwt() ->> 'email' 
+             OR orders.customer_phone = auth.jwt() ->> 'phone')
+    )
+);
+
+-- Admin tiene acceso total
+CREATE POLICY "Admin full access order_items"
+ON order_items FOR ALL 
+USING (auth.role() = 'admin');
+
+-- ============================================
+-- POLÍTICAS RLS - ACTIVITY_LOGS
+-- ============================================
 
 CREATE POLICY "Admin only logs" 
 ON activity_logs FOR ALL 
