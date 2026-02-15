@@ -64,7 +64,15 @@ export async function POST(request: Request) {
             orderCode: order.order_code,
         })
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Bad request'
+        let message = 'Bad request'
+        if (error instanceof Error) {
+            message = error.message
+        } else if (error && typeof error === 'object' && 'message' in error) {
+            message = String((error as { message: unknown }).message)
+        } else if (typeof error === 'string') {
+            message = error
+        }
+        console.error('create-order error:', error)
         return NextResponse.json({ error: message }, { status: 400 })
     }
 }
