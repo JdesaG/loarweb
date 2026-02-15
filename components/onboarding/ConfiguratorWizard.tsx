@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -22,6 +23,7 @@ interface ConfiguratorWizardProps {
     product: Product
 }
 
+const INITIAL_PRICE = 0.50
 const TOTAL_STEPS = 2
 
 export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
@@ -279,6 +281,37 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
                         </div>
                     )}
 
+                    {/* ─── Inicial (opcional) ─────────────────────────────────────── */}
+                    {store.color && store.size && (
+                        <div className="space-y-3 animate-in fade-in duration-200 rounded-lg border border-neutral-200 p-4">
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="add-initial"
+                                    checked={store.hasInitial}
+                                    onCheckedChange={(checked: boolean) => {
+                                        store.setField('hasInitial', !!checked)
+                                        if (!checked) store.setField('initialLetter', '')
+                                    }}
+                                />
+                                <Label htmlFor="add-initial" className="cursor-pointer">
+                                    ¿Agregar inicial? <span className="text-neutral-400 text-xs">(+{formatCurrency(INITIAL_PRICE)} c/u)</span>
+                                </Label>
+                            </div>
+                            {store.hasInitial && (
+                                <div className="space-y-2 animate-in fade-in duration-200">
+                                    <Label>Letra inicial</Label>
+                                    <Input
+                                        maxLength={3}
+                                        placeholder="Ej: J"
+                                        value={store.initialLetter}
+                                        onChange={(e) => store.setField('initialLetter', e.target.value.toUpperCase())}
+                                        className="max-w-24 text-center text-lg font-bold uppercase"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* ─── Cantidad ────────────────────────────────────────────────── */}
                     <div className="space-y-2">
                         <Label>Cantidad</Label>
@@ -309,67 +342,70 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
                         </div>
                     )}
                 </div>
-            )}
+            )
+            }
 
             {/* ══════════════════════════════════════════════════════════════════
                 Step 2: Imágenes de Diseño
               ══════════════════════════════════════════════════════════════════ */}
-            {store.step === 2 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                    {needsDesign ? (
-                        <>
-                            <h3 className="text-lg font-semibold text-neutral-900">
-                                {designSlots === 2 ? 'Sube tus 2 diseños' : 'Sube tu diseño'}
-                            </h3>
+            {
+                store.step === 2 && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                        {needsDesign ? (
+                            <>
+                                <h3 className="text-lg font-semibold text-neutral-900">
+                                    {designSlots === 2 ? 'Sube tus 2 diseños' : 'Sube tu diseño'}
+                                </h3>
 
-                            {/* Design 1 */}
-                            <ImageUploader
-                                imagePreview={store.imagePreview}
-                                onFileChange={(file, preview) => {
-                                    store.setField('imageFile', file)
-                                    store.setField('imagePreview', preview)
-                                }}
-                            />
-
-                            {/* Design 2 (Dual only) */}
-                            {designSlots === 2 && (
-                                <>
-                                    <p className="text-sm font-medium text-neutral-700 mt-4">
-                                        Diseño 2 (Espalda)
-                                    </p>
-                                    <ImageUploader
-                                        imagePreview={store.imagePreview2}
-                                        onFileChange={(file, preview) => {
-                                            store.setField('imageFile2', file)
-                                            store.setField('imagePreview2', preview)
-                                        }}
-                                    />
-                                </>
-                            )}
-
-                            {/* Placement instructions */}
-                            <div className="space-y-2">
-                                <Label>Instrucciones de ubicación (opcional)</Label>
-                                <textarea
-                                    value={store.placement}
-                                    onChange={(e) => store.setField('placement', e.target.value)}
-                                    rows={3}
-                                    placeholder="Ej: Centrado en el pecho, tamaño 20cm..."
-                                    className="flex w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm shadow-sm transition-colors focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-200 resize-none"
+                                {/* Design 1 */}
+                                <ImageUploader
+                                    imagePreview={store.imagePreview}
+                                    onFileChange={(file, preview) => {
+                                        store.setField('imageFile', file)
+                                        store.setField('imagePreview', preview)
+                                    }}
                                 />
+
+                                {/* Design 2 (Dual only) */}
+                                {designSlots === 2 && (
+                                    <>
+                                        <p className="text-sm font-medium text-neutral-700 mt-4">
+                                            Diseño 2 (Espalda)
+                                        </p>
+                                        <ImageUploader
+                                            imagePreview={store.imagePreview2}
+                                            onFileChange={(file, preview) => {
+                                                store.setField('imageFile2', file)
+                                                store.setField('imagePreview2', preview)
+                                            }}
+                                        />
+                                    </>
+                                )}
+
+                                {/* Placement instructions */}
+                                <div className="space-y-2">
+                                    <Label>Instrucciones de ubicación (opcional)</Label>
+                                    <textarea
+                                        value={store.placement}
+                                        onChange={(e) => store.setField('placement', e.target.value)}
+                                        rows={3}
+                                        placeholder="Ej: Centrado en el pecho, tamaño 20cm..."
+                                        className="flex w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm shadow-sm transition-colors focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-200 resize-none"
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-center py-8 space-y-2">
+                                <p className="text-lg font-semibold text-neutral-900">Producto llano</p>
+                                <p className="text-sm text-neutral-500">
+                                    Este producto no requiere diseño personalizado. Presiona
+                                    &quot;Finalizar&quot; para continuar.
+                                </p>
                             </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-8 space-y-2">
-                            <p className="text-lg font-semibold text-neutral-900">Producto llano</p>
-                            <p className="text-sm text-neutral-500">
-                                Este producto no requiere diseño personalizado. Presiona
-                                &quot;Finalizar&quot; para continuar.
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
+                        )}
+                    </div>
+                )
+            }
 
             {/* ══════════════════════════════════════════════════════════════════
                 Navigation buttons
@@ -400,6 +436,6 @@ export function ConfiguratorWizard({ product }: ConfiguratorWizardProps) {
                     </Button>
                 )}
             </div>
-        </div>
+        </div >
     )
 }

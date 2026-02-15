@@ -12,6 +12,8 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 
+const INITIAL_PRICE = 0.50
+
 export default function ResumenPage({ params }: { params: Promise<{ productId: string }> }) {
     return (
         <Suspense>
@@ -53,6 +55,7 @@ function ResumenContent({ params }: { params: Promise<{ productId: string }> }) 
             placementInstructions: store.placement || undefined,
             addInitial: store.hasInitial || undefined,
             initialLetter: store.initialLetter || undefined,
+            initialPrice: store.hasInitial ? INITIAL_PRICE : undefined,
         })
         toast.success('Agregado al carrito')
         store.reset()
@@ -71,6 +74,7 @@ function ResumenContent({ params }: { params: Promise<{ productId: string }> }) 
             placementInstructions: store.placement || undefined,
             addInitial: store.hasInitial || undefined,
             initialLetter: store.initialLetter || undefined,
+            initialPrice: store.hasInitial ? INITIAL_PRICE : undefined,
         })
         store.reset()
         router.push(`/onboarding/checkout${executionId ? `?executionId=${executionId}` : ''}`)
@@ -100,6 +104,7 @@ function ResumenContent({ params }: { params: Promise<{ productId: string }> }) 
                     selectedColor={store.color || undefined}
                     selectedSize={store.size || undefined}
                     addInitial={store.hasInitial}
+                    initialPrice={store.hasInitial ? INITIAL_PRICE : undefined}
                 />
 
                 <CartButton
