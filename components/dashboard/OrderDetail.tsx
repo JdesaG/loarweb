@@ -10,6 +10,8 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Download, ExternalLink, MapPin, Receipt, Image as ImageIcon } from 'lucide-react'
 
 interface OrderDetailProps {
     order: Order
@@ -17,10 +19,34 @@ interface OrderDetailProps {
     onOpenChange: (open: boolean) => void
 }
 
+/** Convert a base64 string (with or without data URI prefix) to a downloadable blob */
+function downloadBase64Image(base64: string, fileName: string) {
+    // If it already has a data URI prefix, use it; otherwise assume png
+    const dataUri = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`
+    const byteString = atob(dataUri.split(',')[1])
+    const mimeString = dataUri.split(',')[0].split(':')[1].split(';')[0]
+
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i)
+    }
+
+    const blob = new Blob([ab], { type: mimeString })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+}
+
 export function OrderDetail({ order, open, onOpenChange }: OrderDetailProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-3">
                         <span className="font-mono">{order.order_code}</span>
@@ -61,6 +87,19 @@ export function OrderDetail({ order, open, onOpenChange }: OrderDetailProps) {
                                 </div>
                             )}
                         </div>
+
+                        {/* Location button */}
+                        {order.location_url && (
+                            <a
+                                href={order.location_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md px-3 py-1.5 transition-colors"
+                            >
+                                <MapPin className="h-3.5 w-3.5" />
+                                Ver ubicación en mapa
+                            </a>
+                        )}
                     </div>
 
                     {/* Items */}
@@ -68,24 +107,79 @@ export function OrderDetail({ order, open, onOpenChange }: OrderDetailProps) {
                         <div>
                             <h4 className="text-sm font-semibold text-neutral-500 mb-2">Productos</h4>
                             <div className="space-y-2">
-                                {order.order_items.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between rounded-md bg-neutral-50 p-3 text-sm">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium truncate">{item.product_name || 'Producto'}</p>
-                                            <p className="text-xs text-neutral-500 flex flex-wrap gap-1">
-                                                {item.style_name && <span>Estilo: {item.style_name}</span>}
-                                                {item.selected_color && <span>· {item.selected_color}</span>}
-                                                {item.selected_size && <span>· {item.selected_size}</span>}
-                                                {item.material && <span>· {item.material}</span>}
-                                            </p>
+                                {order.order_items.map((item, idx) => (
+                                    <div key={item.id} className="rounded-md bg-neutral-50 p-3 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium truncate">{item.product_name || 'Producto'}</p>
+                                                <p className="text-xs text-neutral-500 flex flex-wrap gap-1">
+                                                    {item.style_name && <span>Estilo: {item.style_name}</span>}
+                                                    {item.selected_color && <span>· {item.selected_color}</span>}
+                                                    {item.selected_size && <span>· {item.selected_size}</span>}
+                                                    {item.material && <span>· {item.material}</span>}
+                                                </p>
+                                            </div>
+                                            <div className="text-right ml-3">
+                                                <p className="font-semibold">{formatCurrency(item.item_total)}</p>
+                                                <p className="text-xs text-neutral-500">×{item.quantity}</p>
+                                            </div>
                                         </div>
-                                        <div className="text-right ml-3">
-                                            <p className="font-semibold">{formatCurrency(item.item_total)}</p>
-                                            <p className="text-xs text-neutral-500">×{item.quantity}</p>
-                                        </div>
+
+                                        {/* Design download buttons */}
+                                        {(item.design_main_url || item.design_secondary_url) && (
+                                            <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-neutral-200">
+                                                {item.design_main_url && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            downloadBase64Image(
+                                                                item.design_main_url!,
+                                                                `${order.order_code}_item${idx + 1}_diseño_frontal.png`
+                                                            )
+                                                        }
+                                                        className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 rounded-md px-2.5 py-1.5 transition-colors"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" />
+                                                        Diseño frontal
+                                                    </button>
+                                                )}
+                                                {item.design_secondary_url && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            downloadBase64Image(
+                                                                item.design_secondary_url!,
+                                                                `${order.order_code}_item${idx + 1}_diseño_trasero.png`
+                                                            )
+                                                        }
+                                                        className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 rounded-md px-2.5 py-1.5 transition-colors"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" />
+                                                        Diseño trasero
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Payment receipt */}
+                    {order.payment_receipt_url && (
+                        <div>
+                            <h4 className="text-sm font-semibold text-neutral-500 mb-2">Comprobante de pago</h4>
+                            <a
+                                href={order.payment_receipt_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-md px-3 py-1.5 transition-colors"
+                            >
+                                <Receipt className="h-3.5 w-3.5" />
+                                Ver comprobante
+                                <ExternalLink className="h-3 w-3" />
+                            </a>
                         </div>
                     )}
 

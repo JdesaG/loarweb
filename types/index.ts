@@ -68,6 +68,9 @@ export interface Order {
     status: OrderStatus
     payment_status: string | null
     delivery_method: string | null
+    location_url: string | null
+    payment_receipt_url: string | null
+    payment_method: string | null
     notas: string | null
     created_at: string
     updated_at: string
