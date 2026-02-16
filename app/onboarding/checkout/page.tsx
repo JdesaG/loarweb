@@ -108,25 +108,25 @@ function CheckoutContent() {
             clearCart()
             setOrderCode(data.orderCode)
 
-            // Notificar a Jelou con el número de orden
+            // Notificar a Jelou solo con el número de orden y cerrar WebView
             if (executionId) {
-                const callbackRes = await fetch('/api/jelou-callback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        executionId,
-                        success: true,
-                        body: {
-                            order_code: data.orderCode,
-                            order_id: data.orderId,
-                            total: orderPayload.total,
-                        }
-                    }),
-                })
-
-                if (callbackRes.ok) {
-                    closeWebView()
+                try {
+                    await fetch('/api/jelou-callback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            executionId,
+                            success: true,
+                            body: {
+                                order_code: data.orderCode,
+                            }
+                        }),
+                    })
+                } catch {
+                    // Si el callback falla, no bloqueamos al usuario
+                    // Jelou derivará a agente humano por timeout
                 }
+                closeWebView()
             }
 
         } catch (err: unknown) {
