@@ -64,10 +64,12 @@ function CheckoutContent() {
             const orderPayload = {
                 customer: {
                     ...customer,
+                    delivery_method: customer.delivery_method || 'envio_nacional', // Default fallback
                     data_consent: termsAccepted,
                 },
                 items: items.map((item) => ({
                     product_id: item.product.id,
+                    pricing_id: item.pricingId || null,
                     product_name: item.product.name,
                     style_name: item.styleName || null,
                     selected_color: item.selectedColor || null,

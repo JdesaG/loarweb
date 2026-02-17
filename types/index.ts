@@ -134,6 +134,7 @@ export interface CartItem {
     addInitial?: boolean
     initialLetter?: string
     initialPrice?: number
+    pricingId?: string
 }
 
 // ─── Configurator Store ──────────────────────────────────────────────────────
