@@ -102,8 +102,9 @@ function CheckoutContent() {
             })
 
             if (!res.ok) {
-                const data = await res.json()
-                throw new Error(data.error || 'Error al crear orden')
+                const errorData = await res.json()
+                console.error('[CreateOrder Error Response]:', errorData)
+                throw new Error(errorData.error || `Error al crear orden (Status: ${res.status})`)
             }
 
             const data = await res.json()
@@ -132,7 +133,13 @@ function CheckoutContent() {
             }
 
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Error inesperado')
+            console.error('[Submit Error]', err)
+            // Show detailed error in toast for debugging
+            const message = err instanceof Error ? err.message : 'Error inesperado'
+            toast.error(message, {
+                duration: 10000, // Make it last longer so user can read/screenshot
+                closeButton: true,
+            })
         }
         setSubmitting(false)
     }
