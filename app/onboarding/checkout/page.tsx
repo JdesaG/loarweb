@@ -101,13 +101,21 @@ function CheckoutContent() {
                 body: JSON.stringify(orderPayload),
             })
 
-            if (!res.ok) {
-                const errorData = await res.json()
-                console.error('[CreateOrder Error Response]:', errorData)
-                throw new Error(errorData.error || `Error al crear orden (Status: ${res.status})`)
+            let data
+            const responseText = await res.text()
+
+            try {
+                data = JSON.parse(responseText)
+            } catch (e) {
+                console.error('[CreateOrder JSON Parse Error]', e)
+                console.error('[Raw Response]', responseText)
+                throw new Error('La respuesta del servidor no es válida (JSON error)')
             }
 
-            const data = await res.json()
+            if (!res.ok) {
+                console.error('[CreateOrder Error Response]:', data)
+                throw new Error(data.error || `Error al crear orden (Status: ${res.status})`)
+            }
             clearCart()
             setOrderCode(data.orderCode)
 

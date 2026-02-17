@@ -19,10 +19,16 @@ interface OrderDetailProps {
     onOpenChange: (open: boolean) => void
 }
 
-/** Convert a base64 string (with or without data URI prefix) to a downloadable blob */
-function downloadBase64Image(base64: string, fileName: string) {
-    // If it already has a data URI prefix, use it; otherwise assume png
-    const dataUri = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`
+/** Download or open a design image — supports both URLs and base64 */
+function downloadDesignImage(value: string, fileName: string) {
+    // If it's a URL (from Supabase Storage), open in new tab
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+        window.open(value, '_blank')
+        return
+    }
+
+    // Legacy: base64 data → convert to blob and download
+    const dataUri = value.startsWith('data:') ? value : `data:image/png;base64,${value}`
     const byteString = atob(dataUri.split(',')[1])
     const mimeString = dataUri.split(',')[0].split(':')[1].split(';')[0]
 
@@ -132,7 +138,7 @@ export function OrderDetail({ order, open, onOpenChange }: OrderDetailProps) {
                                                     <button
                                                         type="button"
                                                         onClick={() =>
-                                                            downloadBase64Image(
+                                                            downloadDesignImage(
                                                                 item.design_main_url!,
                                                                 `${order.order_code}_item${idx + 1}_diseño_frontal.png`
                                                             )
@@ -147,7 +153,7 @@ export function OrderDetail({ order, open, onOpenChange }: OrderDetailProps) {
                                                     <button
                                                         type="button"
                                                         onClick={() =>
-                                                            downloadBase64Image(
+                                                            downloadDesignImage(
                                                                 item.design_secondary_url!,
                                                                 `${order.order_code}_item${idx + 1}_diseño_trasero.png`
                                                             )
