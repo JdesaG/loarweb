@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createOrderSchema } from '@/schemas/order'
+import { z } from 'zod'
 
 export async function POST(request: Request) {
     try {
@@ -9,28 +10,60 @@ export async function POST(request: Request) {
 
         const db = supabaseAdmin()
 
-        // 1. Create order with individual customer fields
-        const { data: order, error: orderError } = await db
-            .from('orders')
-            .insert({
-                customer_name: input.customer.customer_name,
-                customer_phone: input.customer.customer_phone || null,
-                customer_email: input.customer.customer_email || null,
-                customer_id_card: input.customer.customer_id_card || null,
-                data_consent: input.customer.data_consent ?? false,
-                consent_timestamp: input.customer.data_consent ? new Date().toISOString() : null,
-                delivery_method: input.customer.delivery_method || null,
-                notas: input.customer.notas || null,
-                subtotal: input.subtotal,
-                tax: input.tax,
-                total: input.total,
-                status: 'pending',
-                payment_status: 'pending',
-            })
-            .select('id, order_code')
-            .single()
+        // 1. Create order with individual customer fields (Retry logic due to race condition on order_code trigger)
+        let order
+        let orderError
+        let attempts = 0
+        const maxAttempts = 3
 
-        if (orderError || !order) throw orderError ?? new Error('Order creation failed')
+        while (attempts < maxAttempts) {
+            try {
+                const { data, error } = await db
+                    .from('orders')
+                    .insert({
+                        customer_name: input.customer.customer_name,
+                        customer_phone: input.customer.customer_phone || null,
+                        customer_email: input.customer.customer_email || null,
+                        customer_id_card: input.customer.customer_id_card || null,
+                        data_consent: input.customer.data_consent ?? false,
+                        delivery_method: input.customer.delivery_method || null,
+                        notas: input.customer.notas || null,
+                        subtotal: input.subtotal,
+                        tax: input.tax,
+                        total: input.total,
+                        status: 'pending',
+                        payment_status: 'pending',
+                    })
+                    .select('id, order_code')
+                    .single()
+
+                if (error) {
+                    // Check if error is duplicate key violation on order_code
+                    if (error.code === '23505' && error.message.includes('orders_order_code_key')) {
+                        console.warn(`[create-order] Race condition on order_code, retrying... (${attempts + 1}/${maxAttempts})`)
+                        attempts++
+                        if (attempts === maxAttempts) {
+                            orderError = error
+                            break
+                        }
+                        // Small delay before retry
+                        await new Promise(resolve => setTimeout(resolve, 300))
+                        continue
+                    }
+                    orderError = error
+                    break
+                }
+
+                order = data
+                break
+            } catch (err) {
+                console.error('[create-order] Unexpected error during insert:', err)
+                attempts++
+                if (attempts === maxAttempts) throw err
+            }
+        }
+
+        if (orderError || !order) throw orderError ?? new Error('Order creation failed after retries')
 
         // 2. Insert order items with individual columns
         const itemsPayload = input.items.map((item) => ({
@@ -65,7 +98,18 @@ export async function POST(request: Request) {
             orderCode: order.order_code,
         })
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Bad request'
+        let message = 'Bad request'
+        if (error instanceof z.ZodError) {
+            message = 'Validation error: ' + JSON.stringify(error.issues)
+            console.error('Zod Validation Error:', JSON.stringify(error.issues, null, 2))
+        } else if (error instanceof Error) {
+            message = error.message
+        } else if (error && typeof error === 'object' && 'message' in error) {
+            message = String((error as { message: unknown }).message)
+        } else if (typeof error === 'string') {
+            message = error
+        }
+        console.error('create-order error:', error)
         return NextResponse.json({ error: message }, { status: 400 })
     }
 }

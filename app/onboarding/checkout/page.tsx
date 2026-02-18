@@ -64,10 +64,12 @@ function CheckoutContent() {
             const orderPayload = {
                 customer: {
                     ...customer,
+                    delivery_method: customer.delivery_method || 'envio_nacional', // Default fallback
                     data_consent: termsAccepted,
                 },
                 items: items.map((item) => ({
                     product_id: item.product.id,
+                    pricing_id: item.pricingId || null,
                     product_name: item.product.name,
                     style_name: item.styleName || null,
                     selected_color: item.selectedColor || null,
@@ -88,51 +90,64 @@ function CheckoutContent() {
                             ? item.initialPrice * item.quantity
                             : 0),
                 })),
+                subtotal,
+                tax,
                 total: grandTotal,
             }
 
-            // const res = await fetch('/api/create-order', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(orderPayload),
-            // })
-            //
-            // if (!res.ok) {
-            //     const data = await res.json()
-            //     throw new Error(data.error || 'Error al crear orden')
-            // }
-            //
-            // const data = await res.json()
-            // clearCart()
-            // setOrderCode(data.orderCode)
+            const res = await fetch('/api/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderPayload),
+            })
 
-            //TO-DO solo ejecutar esta sección si el pedido creado fue exitoso es decir el POST de las lineas de arriba
-            //TO DO
-            console.log('Order payload to send to Jelou:', orderPayload)
+            let data
+            const responseText = await res.text()
+
+            try {
+                data = JSON.parse(responseText)
+            } catch (e) {
+                console.error('[CreateOrder JSON Parse Error]', e)
+                console.error('[Raw Response]', responseText)
+                throw new Error('La respuesta del servidor no es válida (JSON error)')
+            }
+
+            if (!res.ok) {
+                console.error('[CreateOrder Error Response]:', data)
+                throw new Error(data.error || `Error al crear orden (Status: ${res.status})`)
+            }
+            clearCart()
+            setOrderCode(data.orderCode)
+
+            // Notificar a Jelou solo con el número de orden y cerrar WebView
             if (executionId) {
-                const callbackRes = await fetch('/api/jelou-callback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        executionId,
-                        success: true,
-                        //TO-DO: Jandony tienes que enviar la metadata que quieres luego mostrar en el mensaje de confirmación en WhatsApp.
-                        // No mandes todito, por el momento yo voy a enviar el total nomas,
-                        body:
-                        {
-                            total: orderPayload.total,
-                             // Aquí puedes agregar más campos si quieres mostrar más información en WhatsApp
-                        }
-                    }),
-                })
-
-                if (callbackRes.ok) {
-                    closeWebView()
+                try {
+                    await fetch('/api/jelou-callback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            executionId,
+                            success: true,
+                            body: {
+                                order_code: "ORDCRISTIAN",
+                            }
+                        }),
+                    })
+                } catch {
+                    // Si el callback falla, no bloqueamos al usuario
+                    // Jelou derivará a agente humano por timeout
                 }
+                // closeWebView()
             }
 
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Error inesperado')
+            console.error('[Submit Error]', err)
+            // Show detailed error in toast for debugging
+            const message = err instanceof Error ? err.message : 'Error inesperado'
+            toast.error(message, {
+                duration: 10000, // Make it last longer so user can read/screenshot
+                closeButton: true,
+            })
         }
         setSubmitting(false)
     }

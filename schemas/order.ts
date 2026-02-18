@@ -2,8 +2,8 @@ import { z } from 'zod'
 
 // ─── Order Item Schema ───────────────────────────────────────────────────────
 export const orderItemSchema = z.object({
-    product_id: z.string().uuid(),
-    pricing_id: z.string().uuid().optional().nullable(),
+    product_id: z.string(),
+    pricing_id: z.string().optional().nullable(),
     product_name: z.string().optional().nullable(),
     style_name: z.string().optional().nullable(),
     selected_color: z.string().optional().nullable(),
