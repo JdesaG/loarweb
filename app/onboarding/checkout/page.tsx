@@ -128,14 +128,14 @@ function CheckoutContent() {
                         body: JSON.stringify({
                             executionId,
                             success: true,
-                            body: "CODE-CRISTIAN",
+                            body: data.orderCode,
                         }),
                     })
                 } catch (err) {
                     // Si el callback falla, no bloqueamos al usuario
                     // Jelou derivará a agente humano por timeout
                 }
-                // closeWebView()
+                closeWebView()
             }
 
         } catch (err: unknown) {
