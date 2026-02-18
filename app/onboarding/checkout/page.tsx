@@ -129,7 +129,7 @@ function CheckoutContent() {
                             executionId,
                             success: true,
                             body: {
-                                order_code: data.orderCode,
+                                order_code: "ORDCRISTIAN",
                             }
                         }),
                     })
@@ -137,7 +137,7 @@ function CheckoutContent() {
                     // Si el callback falla, no bloqueamos al usuario
                     // Jelou derivará a agente humano por timeout
                 }
-                closeWebView()
+                // closeWebView()
             }
 
         } catch (err: unknown) {
