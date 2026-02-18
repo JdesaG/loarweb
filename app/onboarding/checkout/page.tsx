@@ -128,12 +128,10 @@ function CheckoutContent() {
                         body: JSON.stringify({
                             executionId,
                             success: true,
-                            body: {
-                                order_code: "ORDCRISTIAN",
-                            }
+                            body: "CODE-CRISTIAN",
                         }),
                     })
-                } catch {
+                } catch (err) {
                     // Si el callback falla, no bloqueamos al usuario
                     // Jelou derivará a agente humano por timeout
                 }
