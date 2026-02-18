@@ -128,7 +128,7 @@ function CheckoutContent() {
                         body: JSON.stringify({
                             executionId,
                             success: true,
-                            data: data.orderCode,
+                            data: { orderCode: data.orderCode },
                         }),
                     })
                 } catch (err) {
