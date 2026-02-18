@@ -107,6 +107,8 @@ function CheckoutContent() {
             // setOrderCode(data.orderCode)
 
             //TO-DO solo ejecutar esta sección si el pedido creado fue exitoso es decir el POST de las lineas de arriba
+            //TO DO
+            console.log('Order payload to send to Jelou:', orderPayload)
             if (executionId) {
                 const callbackRes = await fetch('/api/jelou-callback', {
                     method: 'POST',
