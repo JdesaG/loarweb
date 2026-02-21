@@ -12,6 +12,7 @@ export interface Product {
     has_styles: boolean
     available_styles: string[]
     is_active: boolean
+    price?: number
     created_at: string
     updated_at: string
 }

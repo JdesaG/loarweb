@@ -26,6 +26,7 @@ export function ProductEditor({ product, open, onOpenChange, onSave }: ProductEd
     const [name, setName] = useState('')
     const [category, setCategory] = useState('')
     const [sku, setSku] = useState('')
+    const [price, setPrice] = useState<string>('')
     const [isActive, setIsActive] = useState(true)
     const [saving, setSaving] = useState(false)
 
@@ -34,6 +35,7 @@ export function ProductEditor({ product, open, onOpenChange, onSave }: ProductEd
             setName(product.name)
             setCategory(product.category ?? '')
             setSku(product.sku ?? '')
+            setPrice(product.price?.toString() ?? '')
             setIsActive(product.is_active)
         }
     }, [product])
@@ -46,6 +48,7 @@ export function ProductEditor({ product, open, onOpenChange, onSave }: ProductEd
             category: category || undefined,
             sku: sku || undefined,
             is_active: isActive,
+            price: price ? parseFloat(price) : undefined,
         })
         setSaving(false)
         onOpenChange(false)
@@ -73,6 +76,21 @@ export function ProductEditor({ product, open, onOpenChange, onSave }: ProductEd
                         <div className="space-y-2">
                             <Label>SKU</Label>
                             <Input value={sku} onChange={(e) => setSku(e.target.value)} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Precio base (sin diseño/llano/unidad)</Label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                                className="pl-7"
+                                placeholder="0.00"
+                            />
                         </div>
                     </div>
 

@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
+import { formatCurrency } from '@/lib/utils'
 import { Edit3, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Product } from '@/types'
@@ -73,6 +74,12 @@ export default function ProductsPage() {
                             )}
                             {product.sku && (
                                 <p className="text-xs text-neutral-400 font-mono">SKU: {product.sku}</p>
+                            )}
+
+                            {product.price !== undefined && (
+                                <p className="text-sm font-bold text-neutral-900 mt-1">
+                                    {formatCurrency(product.price)}
+                                </p>
                             )}
 
                             <div className="flex flex-wrap gap-1 pt-1">

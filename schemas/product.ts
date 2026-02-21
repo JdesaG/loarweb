@@ -5,6 +5,7 @@ export const productUpdateSchema = z.object({
     category: z.string().nullable().optional(),
     sku: z.string().nullable().optional(),
     is_active: z.boolean().optional(),
+    price: z.number().nonnegative().optional(),
 })
 
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>

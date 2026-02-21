@@ -14,14 +14,22 @@ export function useProducts() {
         setLoading(true)
         const { data, error: err } = await supabase
             .from('products')
-            .select('*')
+            .select('*, product_pricing(price, design_type, material, min_qty)')
             .eq('is_active', true)
             .order('name')
 
         if (err) {
             setError(err.message)
         } else {
-            setProducts((data as unknown as Product[]) ?? [])
+            const formattedProducts = (data as any[]).map(p => ({
+                ...p,
+                price: p.product_pricing?.find((pp: any) =>
+                    pp.design_type === 'sin_diseño' &&
+                    pp.material === 'llano' &&
+                    pp.min_qty === 1
+                )?.price
+            }))
+            setProducts(formattedProducts as Product[])
             setError(null)
         }
         setLoading(false)

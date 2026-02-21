@@ -27,19 +27,58 @@ export async function PATCH(
 
         const db = supabaseAdmin()
 
-        const { data, error } = await db
-            .from('products')
-            .update(updatePayload)
-            .eq('id', id)
-            .select()
-            .single()
+        // 1. Update basic product info
+        let updatedData = null
+        if (Object.keys(updatePayload).length > 0) {
+            const { data, error } = await db
+                .from('products')
+                .update(updatePayload)
+                .eq('id', id)
+                .select()
+                .single()
 
-        if (error) throw error
+            if (error) throw error
+            updatedData = data
+        }
 
-        return NextResponse.json(data)
+        // 2. Handle Price Update (Technical: sin_diseño, llano, min_qty=1)
+        if (input.price !== undefined) {
+            const { error: pricingError } = await db
+                .from('product_pricing')
+                .upsert({
+                    product_id: id,
+                    price: input.price,
+                    design_type: 'sin_diseño',
+                    material: 'llano',
+                    min_qty: 1,
+                    max_qty: 9999,
+                    style_name: 'default'
+                }, {
+                    onConflict: 'product_id, style_name, material, design_type, min_qty'
+                })
+
+            if (pricingError) throw pricingError
+
+            // If we didn't update the product but only the price, we need to fetch the product to return it
+            if (!updatedData) {
+                const { data } = await db.from('products').select().eq('id', id).single()
+                updatedData = data
+            }
+        }
+
+        return NextResponse.json(updatedData)
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Internal server error'
-        console.error('Product API Error:', error)
+        console.error('Product API Error Detailed:', error)
+
+        let message = 'Internal server error'
+        if (error instanceof Error) {
+            message = error.message
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+            message = (error as any).message
+        } else if (typeof error === 'string') {
+            message = error
+        }
+
         return NextResponse.json({ error: message }, { status: 500 })
     }
 }
