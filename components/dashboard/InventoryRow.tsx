@@ -21,7 +21,7 @@ export function InventoryRow({ item, onUpdate }: InventoryRowProps) {
 
     const handleSave = async () => {
         setSaving(true)
-        await onUpdate(item.id, { quantity_available: quantity })
+        await onUpdate(item.id, { quantityAvailable: quantity } as any)
         setSaving(false)
         setEditing(false)
     }
@@ -33,7 +33,7 @@ export function InventoryRow({ item, onUpdate }: InventoryRowProps) {
 
     const handleToggleVisible = async () => {
         setSaving(true)
-        await onUpdate(item.id, { is_visible: !item.is_visible })
+        await onUpdate(item.id, { isVisible: !item.is_visible } as any)
         setSaving(false)
     }
 
