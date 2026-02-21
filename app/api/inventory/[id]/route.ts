@@ -11,13 +11,17 @@ export async function PATCH(
         const json = await request.json()
         const input = updateInventorySchema.parse(json)
 
-        // Map camelCase input → snake_case columns
+        // Map input → snake_case columns (accept both camelCase and snake_case)
         const updatePayload: Record<string, unknown> = {}
-        if (input.quantityAvailable !== undefined) {
-            updatePayload.quantity_available = input.quantityAvailable
+
+        const qty = input.quantityAvailable ?? input.quantity_available
+        if (qty !== undefined) {
+            updatePayload.quantity_available = qty
         }
-        if (input.isVisible !== undefined) {
-            updatePayload.is_visible = input.isVisible
+
+        const visible = input.isVisible ?? input.is_visible
+        if (visible !== undefined) {
+            updatePayload.is_visible = visible
         }
 
         if (Object.keys(updatePayload).length === 0) {
@@ -41,6 +45,7 @@ export async function PATCH(
         return NextResponse.json(data)
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Internal server error'
+        console.error('Inventory API Error:', error)
         return NextResponse.json({ error: message }, { status: 500 })
     }
 }
