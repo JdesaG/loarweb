@@ -1,6 +1,7 @@
 'use client'
 
 import { useCartStore } from '@/stores/cartStore'
+import { calculateComboDiscount } from '@/lib/combos'
 
 export function useCart() {
     const items = useCartStore((s) => s.items)
@@ -9,10 +10,14 @@ export function useCart() {
     const clearCart = useCartStore((s) => s.clearCart)
 
     const itemCount = items.length
-    const total = items.reduce((sum, item) => {
+
+    const grossTotal = items.reduce((sum, item) => {
         const initialCost = item.addInitial && item.initialPrice ? item.initialPrice * item.quantity : 0
         return sum + item.unitPrice * item.quantity + initialCost
     }, 0)
 
-    return { items, addItem, removeItem, clearCart, itemCount, total }
+    const { discount: comboDiscount, appliedCombos } = calculateComboDiscount(items)
+    const total = Math.max(0, grossTotal - comboDiscount)
+
+    return { items, addItem, removeItem, clearCart, itemCount, grossTotal, comboDiscount, appliedCombos, total }
 }

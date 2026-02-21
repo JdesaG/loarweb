@@ -29,7 +29,7 @@ function CheckoutContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const executionId = searchParams.get('executionId')
-    const { items, total, clearCart, removeItem } = useCart()
+    const { items, total, grossTotal, comboDiscount, appliedCombos, clearCart, removeItem } = useCart()
     const [submitting, setSubmitting] = useState(false)
     const [orderCode, setOrderCode] = useState<string | null>(null)
     const [termsAccepted, setTermsAccepted] = useState(false)
@@ -57,9 +57,9 @@ function CheckoutContent() {
 
         setSubmitting(true)
         try {
-            const subtotal = total
+            const subtotal = grossTotal
             const tax = 0
-            const grandTotal = subtotal + tax
+            const grandTotal = total  // already discounted by combo logic
 
             const orderPayload = {
                 customer: {
@@ -250,6 +250,17 @@ function CheckoutContent() {
                             </Card>
                         ))}
                     </div>
+                    {/* Combo discount lines */}
+                    {appliedCombos.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                            {appliedCombos.map((combo, i) => (
+                                <div key={i} className="flex justify-between px-1 text-sm text-emerald-600">
+                                    <span>🎁 Combo: {combo.label}</span>
+                                    <span>−{formatCurrency(combo.discount)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex justify-between mt-3 px-1 text-base font-bold text-neutral-900">
                         <span>Total</span>
                         <span>{formatCurrency(total)}</span>
