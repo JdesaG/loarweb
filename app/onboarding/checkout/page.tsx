@@ -43,7 +43,7 @@ function CheckoutContent() {
     })
 
     const closeWebView = () => {
-        const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '593996678900'
+        const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '593958880399'
         window.location.href = `https://wa.me/${waNumber}`
     };
 
