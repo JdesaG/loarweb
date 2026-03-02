@@ -122,7 +122,7 @@ function CheckoutContent() {
             // Notificar a Jelou solo con el número de orden y cerrar WebView
             if (executionId) {
                 try {
-                    await fetch('/api/jelou-callback', {
+                    const callbackRes = await fetch('/api/jelou-callback', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -131,9 +131,13 @@ function CheckoutContent() {
                             data: { orderCode: data.orderCode },
                         }),
                     })
+                    const callbackData = await callbackRes.json()
+                    console.log('[jelou-callback] status:', callbackRes.status, '| body:', JSON.stringify(callbackData, null, 2))
+                    if (!callbackRes.ok) {
+                        toast.warning(`Jelou callback falló (${callbackRes.status}): ${JSON.stringify(callbackData)}`, { duration: 15000, closeButton: true })
+                    }
                 } catch (err) {
-                    // Si el callback falla, no bloqueamos al usuario
-                    // Jelou derivará a agente humano por timeout
+                    console.error('[jelou-callback] fetch error:', err)
                 }
                 // closeWebView()
             }
