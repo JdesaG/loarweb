@@ -139,7 +139,7 @@ function CheckoutContent() {
                 } catch (err) {
                     console.error('[jelou-callback] fetch error:', err)
                 }
-                // closeWebView()
+                closeWebView()
             }
 
         } catch (err: unknown) {
