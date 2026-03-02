@@ -135,7 +135,7 @@ function CheckoutContent() {
                     // Si el callback falla, no bloqueamos al usuario
                     // Jelou derivará a agente humano por timeout
                 }
-                closeWebView()
+                // closeWebView()
             }
 
         } catch (err: unknown) {
